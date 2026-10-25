@@ -144,8 +144,14 @@ export async function listModels(settings) {
   if (settings.provider === 'openai') {
     const client = new OpenAI({ apiKey: settings.openaiKey, dangerouslyAllowBrowser: true });
     const out = [];
-    for await (const m of client.models.list()) if (/^(gpt|o\d|chatgpt)/.test(m.id) && !/audio|realtime|tts|transcribe|image|search/.test(m.id)) out.push(m.id);
-    return out.sort();
+    for await (const m of client.models.list()) {
+      if (!/^(gpt|o\d|chatgpt)/.test(m.id)) continue;
+      if (/audio|realtime|tts|transcribe|image|search|instruct|embedding|moderation/.test(m.id)) continue;
+      // Skip dated snapshots like gpt-4o-2024-08-06 or gpt-4-0613; the plain name points at the latest
+      if (/-\d{4}-\d{2}-\d{2}$|-\d{4}$/.test(m.id)) continue;
+      out.push(m);
+    }
+    return out.sort((a, b) => b.created - a.created).map((m) => m.id); // newest first
   }
   const client = new Anthropic({ apiKey: settings.anthropicKey, dangerouslyAllowBrowser: true });
   const out = [];

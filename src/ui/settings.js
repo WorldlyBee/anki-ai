@@ -55,21 +55,22 @@ export async function renderSettings(app) {
     );
 
   const providerBox = h('div');
+  let openaiModels = await getKV('openaiModels', []);
   const paintProvider = () => {
     const isClaude = (s.provider = s.provider || 'anthropic') === 'anthropic';
-    const datalist = h('datalist', { id: 'model-list' });
     const loadBtn = h('button', {
       class: 'btn', type: 'button',
       onclick: async () => {
         try {
-          const models = await listModels(await getSettings());
-          datalist.replaceChildren(...models.map((m) => h('option', { value: m })));
-          toast(`Found ${models.length} models. Tap the model box to pick one.`);
+          openaiModels = await listModels(await getSettings());
+          await setKV('openaiModels', openaiModels);
+          toast(`Found ${openaiModels.length} models`);
+          paintProvider();
         } catch (err) {
           toast('Could not load models: ' + (err.status === 401 ? 'check your API key' : err.message), 4000);
         }
       },
-    }, 'Load available models');
+    }, openaiModels.length ? 'Refresh model list' : 'Load available models');
     providerBox.replaceChildren(
       isClaude
         ? h('div', {},
@@ -79,10 +80,34 @@ export async function renderSettings(app) {
           )
         : h('div', {},
             text('openaiKey', 'OpenAI API key', { type: 'password', placeholder: 'sk-…', hint: 'Get one at platform.openai.com → API keys. Stays on this device.' }),
-            text('openaiModel', 'Model', { list: 'model-list', hint: 'Type a model name, or load the list from your account.' }),
-            datalist,
+            openaiModelPicker(),
             h('div', { class: 'row-btns' }, loadBtn),
           ),
+    );
+  };
+  // A real <select> once the list is loaded: Android Chrome barely supports <datalist> suggestions
+  const OTHER = '__other__';
+  const openaiModelPicker = () => {
+    if (!openaiModels.length) return text('openaiModel', 'Model', { hint: 'Type a model name, or load the list from your account.' });
+    const options = openaiModels.includes(s.openaiModel) || !s.openaiModel ? openaiModels : [s.openaiModel, ...openaiModels];
+    const custom = h('input', {
+      type: 'text', value: s.openaiModel || '', placeholder: 'model name', autocomplete: 'off', spellcheck: 'false', hidden: true,
+      onchange: (e) => save({ openaiModel: (s.openaiModel = e.target.value.trim()) }),
+    });
+    return h('label', { class: 'field' },
+      h('span', {}, 'Model'),
+      h('select', {
+        onchange: async (e) => {
+          custom.hidden = e.target.value !== OTHER;
+          if (e.target.value === OTHER) return custom.focus();
+          await save({ openaiModel: (s.openaiModel = e.target.value) });
+        },
+      },
+        options.map((m) => h('option', { value: m, selected: m === s.openaiModel }, m)),
+        h('option', { value: OTHER }, 'Other (type a name)…'),
+      ),
+      custom,
+      h('small', {}, 'Newest first. Smaller "mini" models are faster and cheaper.'),
     );
   };
   paintProvider();
