@@ -1,5 +1,5 @@
 import { getSettings, saveSettings } from '../store.js';
-import { listModels } from '../ai.js';
+import { listModels, DEFAULT_TUTOR_PROMPT } from '../ai.js';
 import { browserSpeechSupported } from '../voice.js';
 import { exportBackup, restoreBackup } from '../backup.js';
 import { db, getKV, setKV } from '../db.js';
@@ -24,6 +24,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 export async function renderSettings(app) {
   const s = await getSettings();
   const save = async (patch) => {
+    Object.assign(s, patch); // keep this screen's copy current so redrawn fields show the new value
     await saveSettings(patch);
     if ('theme' in patch) applyTheme(patch.theme);
   };
@@ -112,6 +113,45 @@ export async function renderSettings(app) {
   };
   paintProvider();
 
+  // Whisper settings appear as soon as Whisper is picked (and follow provider changes)
+  const voiceBox = h('div');
+  const paintVoice = () => {
+    if (s.voiceEngine !== 'whisper') return voiceBox.replaceChildren();
+    voiceBox.replaceChildren(
+      s.provider === 'openai'
+        ? h('p', { class: 'note' }, 'Whisper uses the OpenAI API key you entered above. Nothing else to set up.')
+        : text('openaiKey', 'OpenAI API key (for Whisper)', {
+            type: 'password', placeholder: 'sk-…',
+            hint: "Answers still come from Claude; this key is only used to turn your voice into text. Get one at platform.openai.com → API keys. A 15-second question costs well under a tenth of a cent.",
+          }),
+      select('whisperModel', 'Transcription model', [
+        ['gpt-4o-mini-transcribe', 'GPT-4o mini (recommended)'],
+        ['gpt-4o-transcribe', 'GPT-4o (most accurate)'],
+        ['whisper-1', 'Whisper-1 (classic)'],
+      ]),
+    );
+  };
+  paintVoice();
+
+  const tutorPromptEditor = () => {
+    const area = h('textarea', {
+      rows: 12, class: 'prompt-editor', spellcheck: 'false',
+      onchange: (e) => {
+        const v = e.target.value.trim();
+        save({ tutorPrompt: v === DEFAULT_TUTOR_PROMPT.trim() ? '' : v });
+      },
+    });
+    area.value = s.tutorPrompt || DEFAULT_TUTOR_PROMPT;
+    return h('details', { class: 'setup' },
+      h('summary', {}, "Aristotle's tutoring instructions"),
+      h('p', { class: 'note' }, 'What the AI is told before every conversation. Edit it to change how Aristotle teaches you.'),
+      area,
+      h('div', { class: 'row-btns' },
+        h('button', { class: 'btn', onclick: async () => { area.value = DEFAULT_TUTOR_PROMPT; await save({ tutorPrompt: '' }); toast('Back to the default instructions'); } }, 'Reset to default'),
+      ),
+    );
+  };
+
   const installBtn = installPrompt &&
     h('button', { class: 'btn primary', onclick: async () => { installPrompt.prompt(); installPrompt = null; } }, 'Install as app');
 
@@ -153,22 +193,22 @@ export async function renderSettings(app) {
       await syncSection(() => renderSettings(app)),
 
       h('h2', {}, 'AI tutor'),
-      select('provider', 'AI provider', [['anthropic', 'Claude (Anthropic)'], ['openai', 'ChatGPT (OpenAI)']], { onchange: (v) => ((s.provider = v), paintProvider()) }),
+      select('provider', 'AI provider', [['anthropic', 'Claude (Anthropic)'], ['openai', 'ChatGPT (OpenAI)']], { onchange: (v) => ((s.provider = v), paintProvider(), paintVoice()) }),
       providerBox,
       check('sendImages', 'Send card images to the AI'),
+      tutorPromptEditor(),
 
       h('h2', {}, 'Voice'),
       select('voiceEngine', 'Dictation', [
         ['browser', `Built-in speech recognition (free)${browserSpeechSupported ? '' : ' (not available in this browser)'}`],
-        ['whisper', 'OpenAI Whisper (more accurate, needs OpenAI key)'],
-      ], { hint: "Whisper waits until you've finished talking, so it never cuts you off mid-thought. It works even if you use Claude for answers." }),
+        ['whisper', 'OpenAI Whisper (more accurate)'],
+      ], { hint: "Whisper waits until you've finished talking, so it never cuts you off mid-thought.", onchange: (v) => ((s.voiceEngine = v), paintVoice()) }),
+      voiceBox,
       h('div', { class: 'inline' },
         text('autoSendSeconds', 'Auto-send after silence (sec)', { type: 'number', hint: '0 = only send when you tap' }),
         text('voiceLang', 'Language', { placeholder: navigator.language, hint: 'e.g. en-US, fr-FR' }),
       ),
       check('autoSpeak', 'Read answers aloud automatically'),
-      s.voiceEngine === 'whisper' && !s.openaiKey && s.provider === 'anthropic' &&
-        text('openaiKey', 'OpenAI API key (for Whisper)', { type: 'password', placeholder: 'sk-…' }),
 
       h('h2', {}, 'Studying'),
       h('div', { class: 'inline' },

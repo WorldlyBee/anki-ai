@@ -97,6 +97,8 @@ const sse = (text) =>
   console.log('api: model', apiRequest.body.model, '| beta', apiRequest.headers['anthropic-beta'], '| browser header', apiRequest.headers['anthropic-dangerous-direct-browser-access']);
   console.log('api: content types', first.content.map((c) => c.type), '| effort', JSON.stringify(apiRequest.body.output_config), '| fallbacks', apiRequest.body.fallbacks);
   console.log('api: text', JSON.stringify(first.content.at(-1).text));
+  console.log('api: system prompt starts', JSON.stringify(apiRequest.body.system.slice(0, 70)));
+  if (!apiRequest.body.system.startsWith('You are Aristotle') || !/Review history: /.test(first.content.at(-1).text)) throw new Error('tutor prompt or review history missing');
 
   // Close chat, flip, answer
   await page.click('.sheet .icon-btn[aria-label=Minimise]');

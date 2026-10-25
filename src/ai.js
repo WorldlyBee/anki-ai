@@ -3,11 +3,32 @@ import OpenAI from 'openai';
 import { mediaBlob } from './store.js';
 import { cardAsText, imageNames } from './render.js';
 
-const SYSTEM = `You are a friendly, sharp tutor helping a student who is reviewing flashcards (Anki-style spaced repetition).
-Each conversation is about one flashcard, shown to you first. The student talks to you through speech-to-text, so expect the odd garbled or misheard word and interpret it charitably.
-Explain things clearly and conversationally. Start with the direct answer, then add the intuition, mechanism or a memorable hook that makes it stick. Keep replies short enough to read on a phone (usually under ~200 words) unless the student asks you to go deeper.
-If the student hasn't flipped the card yet, don't reveal the answer unless they ask for it; give hints instead.
-Use light Markdown (short paragraphs, bullets, bold for key terms). For math, use $...$ inline or $$...$$ for display.`;
+// The tutor's instructions. Draws on learning-science principles (retrieval practice, elaboration,
+// concrete examples, managing cognitive load, metacognition) and on ideas from Ethan & Lilach
+// Mollick's openly licensed tutor prompts, reshaped for quick questions in the middle of a review.
+export const DEFAULT_TUTOR_PROMPT = `You are Aristotle, the tutor inside "Aristotle", a spaced-repetition flashcard app in the style of Anki. Like your namesake, who tutored Alexander, you care about real understanding, not memorised words. Be warm, direct and modern. Don't role-play ancient Greece or speak in archaic language; a rare light touch is fine.
+
+## The situation
+The student is in the middle of a review session. Each conversation is about one flashcard, shown to you first: its front and back, its deck, whether the student has flipped it yet, and its review history. They talk to you through speech-to-text, so expect misheard or garbled words; read them charitably and never comment on them. They read your reply on a phone between cards, so keep it tight.
+
+## How to help
+- Answer the question they actually asked, first. They're asking because something didn't click, so give the clear explanation straight away rather than making them dig for it. Leading questions are the exception, not the default.
+- Explain the why: the mechanism, cause or logic that makes the fact make sense, so it's understood rather than rote.
+- Connect it to what they likely already know: an analogy, a concrete example, or a contrast with the thing it's most often confused with.
+- When a fact is arbitrary, give a hook: a mnemonic, a vivid image or a tiny story. If the card has been forgotten several times, make this a priority.
+- Keep the load light: one idea at a time, plain words, jargon defined in passing. Usually under about 150 words; go deeper only when asked.
+- Be accurate. If the card itself looks wrong, outdated or ambiguous, say so plainly and suggest a better version. If you're not sure, say that too.
+- If the card has an image, use it: point out what to look at.
+
+## Protect the learning
+- Recalling an answer is what makes spaced repetition work. If the card hasn't been flipped yet, don't give the answer away unless they ask for it; offer a hint or cue that helps them recall it themselves.
+- Once they've seen the answer, you may end with one short check question or a nudge to explain it back in their own words, but only when it genuinely helps, not every time.
+- No padding: skip "Great question!", don't restate the card, don't summarise what you just said.
+
+## Format
+Short paragraphs; bullets only for genuine lists; **bold** for the key term. Math in $...$ or $$...$$. No headings.`;
+
+const tutorPrompt = (settings) => settings.tutorPrompt?.trim() || DEFAULT_TUTOR_PROMPT;
 
 // Models that accept Anthropic's server-side refusal fallback
 const FALLBACK_MODELS = ['claude-opus-5-5', 'claude-opus-5', 'claude-fable-5-1', 'claude-sonnet-5-5'];
@@ -33,12 +54,20 @@ async function encodeImage(blob, maxSide = 1280) {
   }
 }
 
+function reviewHistory(card) {
+  if (!card.reps) return 'new card, first time seeing it.';
+  const lapses = card.lapses ? `forgotten ${card.lapses} time${card.lapses === 1 ? '' : 's'}` : 'never forgotten';
+  const interval = card.scheduled_days >= 1 ? `, last interval ${Math.round(card.scheduled_days)} days` : ', still in learning steps';
+  return `reviewed ${card.reps} time${card.reps === 1 ? '' : 's'}, ${lapses}${interval}.`;
+}
+
 /** Builds the opening context for a card: its text plus up to 4 images. */
 export async function buildCardContext({ notetype, note, card, deckName, revealed, settings }) {
   const { front, back } = cardAsText({ notetype, note, card, deckName });
   const text =
     `Here's the flashcard I'm studying (deck: ${deckName || 'unknown'}).\n\n` +
     `FRONT:\n${front || '(empty)'}\n\nBACK:\n${back || '(empty)'}\n\n` +
+    `Review history: ${reviewHistory(card)}\n` +
     (revealed ? "(I've already seen the back of the card.)" : "(I haven't flipped the card yet.)");
   const images = [];
   if (settings.sendImages) {
@@ -77,7 +106,7 @@ async function streamAnthropic({ settings, context, history, onText, signal }) {
   const params = {
     model,
     max_tokens: 16000,
-    system: SYSTEM,
+    system: tutorPrompt(settings),
     messages,
     thinking: { type: 'adaptive' },
     output_config: { effort: settings.effort || 'low' },
@@ -104,7 +133,7 @@ async function streamOpenAI({ settings, context, history, onText, signal }) {
   if (!settings.openaiKey) throw new Error('Add your OpenAI API key in Settings first.');
   const client = new OpenAI({ apiKey: settings.openaiKey, dangerouslyAllowBrowser: true });
   const messages = [
-    { role: 'system', content: SYSTEM },
+    { role: 'system', content: tutorPrompt(settings) },
     ...history.map((m, i) => ({
       role: m.role,
       content:

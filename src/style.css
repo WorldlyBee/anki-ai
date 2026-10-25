@@ -266,3 +266,8 @@ code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-
 .quote p { font-family: var(--serif); font-style: italic; font-size: 21px; line-height: 1.35; color: var(--text); margin: 0 0 8px; }
 .quote cite { font-style: normal; font-size: 13px; color: var(--muted); letter-spacing: 0.02em; }
 .sheet-head h3 { font-family: var(--serif); font-size: 21px; font-weight: 600; color: var(--text); letter-spacing: 0.01em; }
+
+.prompt-editor {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2);
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical;
+}
