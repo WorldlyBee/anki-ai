@@ -12,6 +12,8 @@ Named for history's most famous tutor. Flashcards with an AI tutor one tap away.
 - Works offline for studying (the AI needs internet); installs to your home screen like a normal app
 - Sync between your phone and laptop through a private GitHub repo (free); link a new device by scanning a QR code
 - One-tap backup and restore
+- Per-deck study reminders (daily, every other day, or chosen weekdays) through Google Calendar or a calendar file
+- Study streaks, a deck-complete celebration, and gentle sound effects
 
 ## Put it on your phone
 

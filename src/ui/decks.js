@@ -4,6 +4,7 @@ import { buildQueues } from '../scheduler.js';
 import { exportBackup } from '../backup.js';
 import { h, icon, toast, dialog, menu } from './dom.js';
 import { navigate, onLeave } from '../router.js';
+import { WEEKDAYS, describe as describeReminder, icsFile, googleCalendarLink } from '../reminders.js';
 import { getSyncStatus, onSyncStatus, getSyncConfig, backupToRepo } from '../sync/sync.js';
 import { syncStatusText } from './syncSettings.js';
 
@@ -69,6 +70,7 @@ export async function renderDecks(app) {
       list.append(h('div', { class: 'deck-row' },
         h('div', { class: 'deck-name', style: { paddingLeft: `${(parts.length - 1) * 18}px` }, onclick: () => navigate(`#/study/${d.id}`) },
           toggle, h('span', { class: 'label' }, parts.at(-1)),
+          d.reminder && h('span', { class: 'bell', title: describeReminder(d.reminder), 'aria-label': `Reminder: ${describeReminder(d.reminder)}` }, '🔔'),
         ),
         ...counts.map((n, i) => h('span', { class: `num ${['n', 'l', 'r'][i]} ${n ? '' : 'zero'}` }, n)),
         h('button', { class: 'icon-btn', 'aria-label': 'Deck options', html: icon('gear').outerHTML, onclick: () => deckOptions(app, d, settings) }),
@@ -151,10 +153,13 @@ async function deckOptions(app, deck, settings) {
   const revIn = h('input', { type: 'number', min: 0, value: deck.revPerDay ?? settings.revPerDay });
   const choice = await dialog({
     title: 'Deck options',
-    body: h('div', {},
+    body: (close) => h('div', {},
       h('label', { class: 'field' }, h('span', {}, 'Name'), nameIn, parent && h('small', {}, `Inside ${parent}`)),
       h('label', { class: 'field' }, h('span', {}, 'New cards per day'), newIn),
       h('label', { class: 'field' }, h('span', {}, 'Maximum reviews per day'), revIn),
+      h('div', { class: 'field' }, h('span', {}, 'Reminder'),
+        h('button', { type: 'button', class: 'btn reminder-btn', onclick: () => close('reminder') },
+          describeReminder(deck.reminder), ' ›')),
       h('p', { class: 'note', style: { color: 'var(--muted)', fontSize: '14px' } }, 'Defaults for all decks live in Settings.'),
     ),
     buttons: [
@@ -163,7 +168,7 @@ async function deckOptions(app, deck, settings) {
       { label: 'Save', value: 'save', primary: true },
     ],
   });
-  if (choice === 'save') {
+  if (choice === 'save' || choice === 'reminder') {
     try {
       await renameDeck(deck.id, nameIn.value);
     } catch (err) {
@@ -171,6 +176,7 @@ async function deckOptions(app, deck, settings) {
       return deckOptions(app, { ...deck }, settings);
     }
     await db.decks.update(deck.id, { newPerDay: Number(newIn.value), revPerDay: Number(revIn.value) });
+    if (choice === 'reminder') return reminderDialog(app, await db.decks.get(deck.id));
     renderDecks(app);
   } else if (choice === 'delete') {
     const sure = await dialog({
@@ -184,4 +190,75 @@ async function deckOptions(app, deck, settings) {
       renderDecks(app);
     }
   }
+}
+
+const DAY_LETTERS = { MO: 'M', TU: 'T', WE: 'W', TH: 'T', FR: 'F', SA: 'S', SU: 'S' };
+
+/** Pick a schedule, then hand it to the phone's calendar, which does the actual reminding. */
+async function reminderDialog(app, deck) {
+  const r = deck.reminder || { repeat: 'daily', days: ['MO', 'TU', 'WE', 'TH', 'FR'], time: '08:00' };
+  const days = new Set(r.days);
+  const repeatIn = h('select', {},
+    [['off', 'Off'], ['daily', 'Every day'], ['alternate', 'Every other day'], ['weekly', 'Specific days']].map(([v, l]) =>
+      h('option', { value: v, selected: (deck.reminder ? r.repeat : 'off') === v }, l)),
+  );
+  const chips = h('div', { class: 'day-chips' }, WEEKDAYS.map((d) =>
+    h('button', {
+      type: 'button', class: `chip ${days.has(d) ? 'on' : ''}`, 'aria-pressed': String(days.has(d)), 'aria-label': d,
+      onclick: (e) => {
+        days.has(d) ? days.delete(d) : days.add(d);
+        e.currentTarget.classList.toggle('on', days.has(d));
+        e.currentTarget.setAttribute('aria-pressed', String(days.has(d)));
+      },
+    }, DAY_LETTERS[d])));
+  const timeIn = h('input', { type: 'time', value: r.time });
+  const daysField = h('div', { class: 'field' }, h('span', {}, 'On'), chips);
+  const timeField = h('label', { class: 'field' }, h('span', {}, 'At'), timeIn);
+  const sync = () => {
+    daysField.hidden = repeatIn.value !== 'weekly';
+    timeField.hidden = repeatIn.value === 'off';
+  };
+  repeatIn.addEventListener('change', sync);
+  sync();
+
+  const choice = await dialog({
+    title: `Remind me: ${deck.name.split('::').at(-1)}`,
+    body: h('div', {},
+      h('label', { class: 'field' }, h('span', {}, 'Repeat'), repeatIn),
+      daysField,
+      timeField,
+      h('p', { class: 'note' }, "Your phone's calendar sends the reminder, right on time. Tapping it opens this deck. Use Google Calendar, or the calendar file for Samsung, Apple or Outlook calendars."),
+    ),
+    buttons: [
+      { label: 'Cancel', value: null },
+      { label: 'Calendar file', value: 'ics' },
+      { label: 'Google Calendar', value: 'google', primary: true },
+    ],
+  });
+  if (!choice) return;
+  if (repeatIn.value === 'off') {
+    await db.decks.update(deck.id, { reminder: null });
+    toast('Reminder off. Delete the event from your calendar too.', 4000);
+    return renderDecks(app);
+  }
+  if (repeatIn.value === 'weekly' && !days.size) {
+    toast('Pick at least one day');
+    return reminderDialog(app, deck);
+  }
+  const reminder = { repeat: repeatIn.value, days: WEEKDAYS.filter((d) => days.has(d)), time: timeIn.value || '08:00' };
+  await db.decks.update(deck.id, { reminder });
+  const deckName = deck.name.split('::').join(' › ');
+  const link = `${location.origin}${location.pathname}#/study/${deck.id}`;
+  if (choice === 'google') {
+    window.open(googleCalendarLink({ reminder, deckName, link }), '_blank', 'noopener');
+    toast('In Google Calendar, set the notification to "At time of event" and tap Save.', 6000);
+  } else {
+    const file = new File([icsFile({ reminder, deckName, deckId: deck.id, link })], `aristotle-${deckName.replace(/[^\w]+/g, '-').toLowerCase()}.ics`, { type: 'text/calendar' });
+    const a = h('a', { href: URL.createObjectURL(file), download: file.name });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    toast('Calendar file downloaded. Open it and choose your calendar app.', 5000);
+  }
+  renderDecks(app);
 }

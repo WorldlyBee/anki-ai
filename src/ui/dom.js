@@ -29,7 +29,10 @@ export function toast(msg, ms = 2500) {
   toastTimer = setTimeout(() => el.classList.remove('show'), ms);
 }
 
-/** A bottom-sheet style dialog. Resolves with the clicked button's value (or null if dismissed). */
+/**
+ * A bottom-sheet style dialog. Resolves with the clicked button's value (or null if dismissed).
+ * `body` may be a function receiving `close(value)`, for content that ends the dialog itself.
+ */
 export function dialog({ title, body, buttons = [{ label: 'OK', value: true, primary: true }] }) {
   return new Promise((resolve) => {
     const close = (v) => {
@@ -43,7 +46,7 @@ export function dialog({ title, body, buttons = [{ label: 'OK', value: true, pri
         'div',
         { class: 'dialog', role: 'dialog', 'aria-label': title },
         title && h('h2', {}, title),
-        body,
+        typeof body === 'function' ? body(close) : body,
         h(
           'div',
           { class: 'dialog-buttons' },
