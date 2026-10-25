@@ -61,13 +61,13 @@ const sse = (text) =>
 
   // Settings: add an API key
   await page.goto('http://localhost:4173/#/settings');
-  await page.fill('input[type=password]', 'sk-ant-test');
-  await page.dispatchEvent('input[type=password]', 'change');
+  await page.fill('input[placeholder="sk-ant-…"]', 'sk-ant-test');
+  await page.dispatchEvent('input[placeholder="sk-ant-…"]', 'change');
   await page.screenshot({ path: `${out}/02-settings.png`, fullPage: true });
 
   // Import the test deck
   await page.goto('http://localhost:4173/#/');
-  await page.setInputFiles('input[type=file]', path.resolve('test/fixtures/modern.apkg'));
+  await page.setInputFiles('input[accept=".apkg,.colpkg,.zip"]', path.resolve('test/fixtures/modern.apkg'));
   await page.waitForSelector('.deck-row');
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/03-decks.png` });

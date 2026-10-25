@@ -240,3 +240,14 @@ input, select, textarea { font: inherit; color: inherit; }
 .settings .note { color: var(--muted); font-size: 14px; }
 .inline { display: flex; gap: 8px; }
 .inline > * { flex: 1; }
+
+/* ---------- sync ---------- */
+.sync-line { padding-top: 0; font-size: 13px; cursor: pointer; }
+.settings details.setup { margin: 8px 0; }
+.settings details.setup summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 6px 0; }
+.settings ol.note { padding-left: 20px; }
+.settings ol.note li { margin: 6px 0; }
+.settings a { color: var(--accent); }
+code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+.qr { background: #fff; padding: 12px; border-radius: 12px; width: min(280px, 100%); margin: 8px auto; }
+.qr svg { display: block; width: 100%; height: auto; }

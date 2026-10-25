@@ -24,11 +24,11 @@ const fs = require('fs');
 
   await page.goto('http://localhost:4173/#/settings');
   await page.selectOption('select >> nth=0', 'openai');
-  await page.fill('input[type=password]', 'sk-test');
-  await page.dispatchEvent('input[type=password]', 'change');
+  await page.fill('input[placeholder="sk-…"]', 'sk-test');
+  await page.dispatchEvent('input[placeholder="sk-…"]', 'change');
   await page.selectOption('label:has-text("Dictation") select', 'whisper');
   await page.goto('http://localhost:4173/#/');
-  await page.setInputFiles('input[type=file]', path.resolve('test/fixtures/legacy.apkg'));
+  await page.setInputFiles('input[accept=".apkg,.colpkg,.zip"]', path.resolve('test/fixtures/legacy.apkg'));
   await page.waitForSelector('.deck-row');
   console.log('legacy import rows:', await page.$$eval('.deck-row', (r) => r.map((x) => x.innerText.replace(/\s+/g, ' '))));
 
@@ -62,7 +62,10 @@ const fs = require('fs');
   await page.waitForLoadState('load');
   await page.waitForTimeout(1500);
   await page.goto('http://localhost:4173/#/');
-  await page.waitForSelector('.deck-row');
+  await page.waitForSelector('.deck-row', { timeout: 8000 }).catch(async (e) => {
+    console.log('DEBUG body:', (await page.innerText('body')).slice(0, 300), '| toast:', await page.$eval('#toast', (t) => t.textContent).catch(() => '-'), '| errors:', errors);
+    throw e;
+  });
   console.log('after restore:', await page.$$eval('.deck-row', (r) => r.map((x) => x.innerText.replace(/\s+/g, ' '))), '|', await page.innerText('.today'));
   const keyKept = await page.evaluate(async () => {
     const req = indexedDB.open('anki-ai');

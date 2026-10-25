@@ -1,6 +1,6 @@
 import initSqlJs from 'sql.js';
 import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
-import { db, getKV, setKV } from './db.js';
+import { db, getKV, setKV, tombstone } from './db.js';
 import { parseApkg } from './import/apkg.js';
 import { convertAnkiCard, makeFsrs, defaultSettings, dayStart } from './scheduler.js';
 
@@ -63,7 +63,7 @@ export async function importFile(file, onProgress = () => {}) {
           const name = parts.slice(0, i).join('::');
           if (!allNames.has(name)) {
             allNames.add(name);
-            await db.decks.put({ id: Date.now() + Math.floor(Math.random() * 1e6), name });
+            await db.decks.put({ id: deckIdForName(name), name });
           }
         }
       }
@@ -95,24 +95,34 @@ export async function importFile(file, onProgress = () => {}) {
   }
 }
 
+// Same name → same id on every device, so separately imported parents don't duplicate
+function deckIdForName(name) {
+  let h = 0;
+  for (const ch of name) h = (Math.imul(h, 31) + ch.codePointAt(0)) >>> 0;
+  return 9e12 + h;
+}
+
 export async function todayLog(settings) {
   const start = dayStart(Date.now(), settings.rolloverHour);
-  return db.revlog.where('time').aboveOrEqual(start).toArray();
+  return db.reviews.where('time').aboveOrEqual(start).toArray();
 }
 
 export async function saveAnswer(updatedCard, logEntry) {
-  let logId;
-  await db.transaction('rw', db.cards, db.revlog, async () => {
+  const id = `${logEntry.time}-${logEntry.cid}`;
+  await db.transaction('rw', db.cards, db.reviews, async () => {
     await db.cards.put(updatedCard);
-    logId = await db.revlog.add(logEntry);
+    await db.reviews.add({ ...logEntry, id });
   });
-  return logId;
+  return id;
 }
 
 export async function undoAnswer(previousCard, logId) {
-  await db.transaction('rw', db.cards, db.revlog, async () => {
-    await db.cards.put(previousCard);
-    await db.revlog.delete(logId);
+  await db.transaction('rw', db.cards, db.reviews, db.tombstones, async () => {
+    // Re-stamp the old version so it counts as the newest change everywhere
+    const { mod, dirty, ...card } = previousCard;
+    await db.cards.put(card);
+    await db.reviews.delete(logId);
+    await tombstone('reviews', [logId]);
   });
 }
 
@@ -120,14 +130,18 @@ export async function deleteDeck(deckId) {
   const decks = await db.decks.toArray();
   const root = decks.find((d) => d.id === deckId);
   const ids = decks.filter((d) => d.id === deckId || d.name.startsWith(root.name + '::')).map((d) => d.id);
-  await db.transaction('rw', db.decks, db.cards, db.notes, async () => {
+  await db.transaction('rw', db.decks, db.cards, db.notes, db.tombstones, async () => {
     const cards = await db.cards.where('did').anyOf(ids).toArray();
     await db.cards.bulkDelete(cards.map((c) => c.id));
+    await tombstone('cards', cards.map((c) => c.id));
     // Remove notes that no longer have any cards
     const nids = [...new Set(cards.map((c) => c.nid))];
     const stillUsed = new Set((await db.cards.where('nid').anyOf(nids).toArray()).map((c) => c.nid));
-    await db.notes.bulkDelete(nids.filter((n) => !stillUsed.has(n)));
+    const orphans = nids.filter((n) => !stillUsed.has(n));
+    await db.notes.bulkDelete(orphans);
+    await tombstone('notes', orphans);
     await db.decks.bulkDelete(ids);
+    await tombstone('decks', ids);
   });
 }
 

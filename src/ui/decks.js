@@ -3,7 +3,9 @@ import { getSettings, importFile, todayLog, deleteDeck } from '../store.js';
 import { buildQueues } from '../scheduler.js';
 import { exportBackup } from '../backup.js';
 import { h, icon, toast, dialog, menu } from './dom.js';
-import { navigate } from '../router.js';
+import { navigate, onLeave } from '../router.js';
+import { getSyncStatus, onSyncStatus } from '../sync/sync.js';
+import { syncStatusText } from './syncSettings.js';
 
 export async function renderDecks(app) {
   const settings = await getSettings();
@@ -74,6 +76,22 @@ export async function renderDecks(app) {
     const studied = log.length;
     list.append(h('div', { class: 'today' }, studied ? `Studied ${studied} card${studied === 1 ? '' : 's'} today` : 'No cards studied today yet'));
   }
+
+  // Sync status, and refresh when another device's changes come in
+  const syncLine = h('div', { class: 'today sync-line', onclick: () => navigate('#/settings') });
+  const paintSync = (st) => {
+    syncLine.hidden = st.state === 'off';
+    syncLine.textContent = syncStatusText(st);
+  };
+  paintSync(getSyncStatus());
+  list.append(syncLine);
+  let prevState = getSyncStatus().state;
+  const off = onSyncStatus((st) => {
+    paintSync(st);
+    if (prevState === 'syncing' && st.state === 'idle' && st.lastPulled) renderDecks(app);
+    prevState = st.state;
+  });
+  onLeave(off);
 
   const fab = h('button', { class: 'fab', onclick: () => fileInput.click() }, '+ Import');
   app.replaceChildren(top, list, fab, fileInput);

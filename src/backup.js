@@ -18,7 +18,7 @@ export async function exportBackup(onProgress = () => {}) {
     notetypes: await db.notetypes.toArray(),
     notes: await db.notes.toArray(),
     cards: await db.cards.toArray(),
-    revlog: await db.revlog.toArray(),
+    reviews: await db.reviews.toArray(),
     media: mediaNames,
   };
   await writer.add('data.json', new TextReader(JSON.stringify(data)));
@@ -39,13 +39,17 @@ export async function restoreBackup(file, onProgress = () => {}) {
   const byName = new Map(entries.map((e) => [e.filename, e]));
   const current = await getSettings();
 
-  await db.transaction('rw', [db.decks, db.notetypes, db.notes, db.cards, db.revlog, db.media, db.kv], async () => {
-    await Promise.all([db.decks.clear(), db.notetypes.clear(), db.notes.clear(), db.cards.clear(), db.revlog.clear(), db.media.clear()]);
-    await db.decks.bulkPut(data.decks);
-    await db.notetypes.bulkPut(data.notetypes);
-    await db.notes.bulkPut(data.notes);
-    await db.cards.bulkPut(data.cards);
-    await db.revlog.bulkPut(data.revlog);
+  await db.transaction('rw', [db.decks, db.notetypes, db.notes, db.cards, db.reviews, db.media, db.kv], async () => {
+    await Promise.all([db.decks.clear(), db.notetypes.clear(), db.notes.clear(), db.cards.clear(), db.reviews.clear(), db.media.clear()]);
+    // Backups made before sync existed have numeric "revlog" entries
+    const reviews = data.reviews || (data.revlog || []).map(({ id, ...r }) => ({ ...r, id: `${r.time}-${r.cid}` }));
+    // Strip sync stamps so restored data is uploaded as fresh changes
+    const fresh = (rows) => rows.map(({ mod, dirty, ...r }) => r);
+    await db.decks.bulkPut(fresh(data.decks));
+    await db.notetypes.bulkPut(fresh(data.notetypes));
+    await db.notes.bulkPut(fresh(data.notes));
+    await db.cards.bulkPut(fresh(data.cards));
+    await db.reviews.bulkPut(fresh(reviews));
     // Keep the API keys already on this device
     await setKV('settings', { ...data.settings, anthropicKey: current.anthropicKey, openaiKey: current.openaiKey });
   });

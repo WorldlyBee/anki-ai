@@ -6,6 +6,7 @@ import { db, getKV, setKV } from '../db.js';
 import { h, icon, toast, dialog } from './dom.js';
 import { navigate } from '../router.js';
 import { applyTheme } from '../theme.js';
+import { syncSection } from './syncSettings.js';
 
 const CLAUDE_MODELS = [
   ['claude-opus-5-5', 'Claude Opus 5.5 (smartest, ~2¢ per question)'],
@@ -121,6 +122,9 @@ export async function renderSettings(app) {
     h('div', { class: 'scroll' }, h('div', { class: 'settings' },
       installBtn && h('div', { class: 'row-btns' }, installBtn),
 
+      h('h2', {}, 'Sync between devices'),
+      await syncSection(() => renderSettings(app)),
+
       h('h2', {}, 'AI tutor'),
       select('provider', 'AI provider', [['anthropic', 'Claude (Anthropic)'], ['openai', 'ChatGPT (OpenAI)']], { onchange: (v) => ((s.provider = v), paintProvider()) }),
       providerBox,
@@ -179,11 +183,11 @@ export async function renderSettings(app) {
           onclick: async () => {
             const ok = await dialog({
               title: 'Erase everything?',
-              body: h('p', {}, 'All decks, cards, review history and images will be deleted from this device. Your settings and API keys are kept.'),
+              body: h('p', {}, 'All decks, cards, review history and images will be deleted from this device. Your settings and API keys are kept. If sync is on, your cards come back from GitHub on the next sync; turn sync off first if you want this device empty.'),
               buttons: [{ label: 'Cancel', value: false }, { label: 'Erase', value: true, danger: true }],
             });
             if (!ok) return;
-            await Promise.all([db.decks.clear(), db.notetypes.clear(), db.notes.clear(), db.cards.clear(), db.revlog.clear(), db.media.clear()]);
+            await Promise.all([db.decks.clear(), db.notetypes.clear(), db.notes.clear(), db.cards.clear(), db.reviews.clear(), db.media.clear()]);
             toast('All study data erased');
             navigate('#/');
           },
