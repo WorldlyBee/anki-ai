@@ -27,7 +27,14 @@ async function handleGitHub(route) {
   const auth = req.headers()['authorization'];
   const json = (status, body) => route.fulfill({ status, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, body: JSON.stringify(body) });
   gh.requests++;
+  if (auth === 'Bearer github_pat_no_access') {
+    if (url.pathname === '/user') return json(200, { login: 'tester' });
+    if (url.pathname === '/user/repos') return json(200, [{ full_name: 'tester/other-private', private: true }]);
+    return json(404, { message: 'Not Found' });
+  }
   if (auth !== `Bearer ${TOKEN}`) return json(401, { message: 'Bad credentials' });
+  if (url.pathname === '/user') return json(200, { login: 'tester' });
+  if (url.pathname === '/user/repos') return json(200, []);
   const p = url.pathname.replace(`/repos/${REPO}`, '');
   const m = req.method();
   const body = req.postData() ? JSON.parse(req.postData()) : null;
@@ -97,7 +104,7 @@ async function device(browser, name, profile) {
   page.on('console', (m) => m.text().startsWith('UNHANDLED') && console.log(name, m.text()));
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(`${name}: ${e.message} :: ${(e.stack || '').split('\n').slice(0, 4).join(' / ')}`));
-  page.on('console', async (msg) => { if (msg.type() !== 'error' || /Sync failed|status of 409/.test(msg.text())) return; const args = await Promise.all(msg.args().map((a) => a.evaluate((v) => (v instanceof Error ? v.stack : String(v))).catch(() => '?'))); page.errors.push(`${name}: ${args.join(' ').slice(0, 300)} @ ${JSON.stringify(msg.location())} type=${msg.args().length}`); });
+  page.on('console', async (msg) => { if (msg.type() !== 'error' || /Sync failed|status of 40[49]/.test(msg.text())) return; const args = await Promise.all(msg.args().map((a) => a.evaluate((v) => (v instanceof Error ? v.stack : String(v))).catch(() => '?'))); page.errors.push(`${name}: ${args.join(' ').slice(0, 300)} @ ${JSON.stringify(msg.location())} type=${msg.args().length}`); });
   return page;
 }
 const rows = (page) => page.$$eval('.deck-row', (r) => r.map((x) => x.innerText.replace(/\s+/g, ' ')));
@@ -127,6 +134,13 @@ async function studyOne(page, deck, ease = 'good') {
   await phone.goto(BASE + '#/settings');
   await phone.click('summary:has-text("First-time setup")');
   await phone.fill('input[placeholder="your-username/anki-ai-data"]', REPO);
+  // A token that wasn't given access to the repo should get a helpful explanation
+  await phone.fill('input[placeholder="github_pat_…"]', 'github_pat_no_access');
+  await phone.click('button:has-text("Turn on sync")');
+  await phone.waitForSelector('.dialog');
+  console.log('no-access message:', await phone.innerText('.dialog p'));
+  assert.match(await phone.innerText('.dialog p'), /can only see: tester\/other-private/);
+  await phone.click('.dialog button');
   await phone.fill('input[placeholder="github_pat_…"]', TOKEN);
   await phone.click('button:has-text("Turn on sync")');
   await phone.waitForSelector('button:has-text("Sync now")', { timeout: 15000 });

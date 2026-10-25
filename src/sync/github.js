@@ -16,8 +16,12 @@ export class GitHubRepo {
     this.branch = null;
   }
 
-  async req(path, { method = 'GET', body, raw = false } = {}) {
-    const res = await fetch(`${API}/repos/${this.repo}${path}`, {
+  req(path, opts) {
+    return this.api(`/repos/${this.repo}${path}`, opts);
+  }
+
+  async api(path, { method = 'GET', body, raw = false } = {}) {
+    const res = await fetch(`${API}${path}`, {
       method,
       cache: 'no-store',
       headers: {
@@ -45,7 +49,7 @@ export class GitHubRepo {
     try {
       info = await this.req('');
     } catch (err) {
-      if (err.status === 404) throw new GitHubError(404, `Can't find the repo "${this.repo}". Check the name, and that your token has access to it.`);
+      if (err.status === 404) throw new GitHubError(404, await this.explainNotFound());
       if (err.status === 401) throw new GitHubError(401, 'GitHub rejected the token. It may be mistyped or expired.');
       throw err;
     }
@@ -62,6 +66,28 @@ export class GitHubRepo {
         body: { message: 'Set up Anki AI sync', content: btoa('Sync data for Anki AI. Managed by the app; please don\'t edit by hand.\n') },
       });
     }
+  }
+
+  /** GitHub says 404 both for "doesn't exist" and "token can't see it", so work out which. */
+  async explainNotFound() {
+    let login = null;
+    let visible = [];
+    try {
+      login = (await this.api('/user')).login;
+      visible = (await this.api('/user/repos?per_page=100&sort=updated')).filter((r) => r.private).map((r) => r.full_name);
+    } catch {}
+    const wanted = this.repo.toLowerCase();
+    const name = wanted.split('/').pop();
+    const fix = 'On GitHub, open Settings → Developer settings → Fine-grained tokens → your token → Edit. Under "Repository access" choose "Only select repositories", add the repo, and save. (Also check "Contents" is "Read and write" under Permissions.)';
+    if (login && !wanted.startsWith(login.toLowerCase() + '/')) {
+      return `The token belongs to "${login}", but the repo is under "${this.repo.split('/')[0]}". Use "${login}/${name}" if that's where you made it.`;
+    }
+    const near = visible.find((r) => r.toLowerCase() !== wanted && r.toLowerCase().includes(name.replace(/-/g, '')) );
+    if (near) return `Your token can't see "${this.repo}", but it can see "${near}". Did you mean that one?`;
+    if (!visible.length) {
+      return `Your token works${login ? ` (signed in as ${login})` : ''}, but it hasn't been given access to "${this.repo}", or that repo doesn't exist yet. ${fix}`;
+    }
+    return `Your token can only see: ${visible.slice(0, 5).join(', ')}. It hasn't been given access to "${this.repo}" (or that repo doesn't exist). ${fix}`;
   }
 
   async head() {
