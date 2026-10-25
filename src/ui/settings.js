@@ -6,7 +6,8 @@ import { db, getKV, setKV } from '../db.js';
 import { h, icon, toast, dialog } from './dom.js';
 import { navigate } from '../router.js';
 import { applyTheme } from '../theme.js';
-import { syncSection } from './syncSettings.js';
+import { syncSection, timeAgo } from './syncSettings.js';
+import { getSyncConfig, backupToRepo, listRepoBackups, restoreFromRepo, forgetPulledData, syncNow } from '../sync/sync.js';
 
 const CLAUDE_MODELS = [
   ['claude-opus-5-5', 'Claude Opus 5.5 (smartest, ~2¢ per question)'],
@@ -92,6 +93,7 @@ export async function renderSettings(app) {
   const usage = h('p', { class: 'note' });
   navigator.storage?.estimate?.().then(({ usage: u }) => (usage.textContent = `Using ${(u / 1024 / 1024).toFixed(1)} MB on this device.`));
   const lastBackup = await getKV('lastBackup');
+  const syncConfig = await getSyncConfig();
 
   const restoreInput = h('input', {
     type: 'file', accept: '.zip', style: { display: 'none' },
@@ -157,26 +159,8 @@ export async function renderSettings(app) {
       select('theme', 'Theme', [['system', 'Follow system'], ['light', 'Light'], ['dark', 'Dark']]),
 
       h('h2', {}, 'Your data'),
-      h('p', { class: 'note' }, 'Everything is stored only on this device. Back up now and then, especially before clearing browser data.'),
-      lastBackup && h('p', { class: 'note' }, `Last backup: ${new Date(lastBackup).toLocaleString()}`),
+      ...(await dataSection(syncConfig, lastBackup, restoreInput)),
       usage,
-      h('div', { class: 'row-btns' },
-        h('button', {
-          class: 'btn primary',
-          onclick: async () => {
-            toast('Preparing backup…', 10000);
-            const blob = await exportBackup((m) => toast(m, 10000));
-            const a = h('a', { href: URL.createObjectURL(blob), download: `anki-ai-backup-${new Date().toISOString().slice(0, 10)}.zip` });
-            document.body.append(a);
-            a.click();
-            a.remove();
-            await setKV('lastBackup', Date.now());
-            toast('Backup saved to your downloads');
-          },
-        }, 'Back up'),
-        h('button', { class: 'btn', onclick: () => restoreInput.click() }, 'Restore backup'),
-        restoreInput,
-      ),
       h('div', { class: 'row-btns' },
         h('button', {
           class: 'btn danger',
@@ -188,6 +172,7 @@ export async function renderSettings(app) {
             });
             if (!ok) return;
             await Promise.all([db.decks.clear(), db.notetypes.clear(), db.notes.clear(), db.cards.clear(), db.reviews.clear(), db.media.clear()]);
+            await forgetPulledData();
             toast('All study data erased');
             navigate('#/');
           },
@@ -195,4 +180,101 @@ export async function renderSettings(app) {
       ),
     )),
   );
+}
+
+async function downloadBackup() {
+  toast('Preparing backup…', 10000);
+  const blob = await exportBackup((m) => toast(m, 10000));
+  const a = h('a', { href: URL.createObjectURL(blob), download: `anki-ai-backup-${new Date().toISOString().slice(0, 10)}.zip` });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  await setKV('lastBackup', Date.now());
+  toast('Backup saved to your downloads');
+}
+
+/** Backup buttons: to the sync repo when sync is on, otherwise to a downloaded file. */
+async function dataSection(syncConfig, lastBackup, restoreInput) {
+  const last = lastBackup && h('p', { class: 'note' }, `Last backup: ${timeAgo(lastBackup)}`);
+  if (!syncConfig) {
+    return [
+      h('p', { class: 'note' }, 'Everything is stored only on this device. Back up now and then, especially before clearing browser data. (Turn on sync above and backups go to GitHub automatically.)'),
+      last,
+      h('div', { class: 'row-btns' },
+        h('button', { class: 'btn primary', onclick: downloadBackup }, 'Back up'),
+        h('button', { class: 'btn', onclick: () => restoreInput.click() }, 'Restore backup'),
+        restoreInput,
+      ),
+    ];
+  }
+  return [
+    h('p', { class: 'note' }, 'Your cards are synced to GitHub. Backups are dated snapshots saved there too, so you can roll back if something goes wrong (say, a deck deleted by accident). One is made automatically every week; the latest 12 are kept.'),
+    last,
+    h('div', { class: 'row-btns' },
+      h('button', {
+        class: 'btn primary',
+        onclick: async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          toast('Backing up to GitHub…', 20000);
+          try {
+            const r = await backupToRepo();
+            toast(`Backed up ${r.cards} cards to GitHub`);
+            if (last) last.textContent = 'Last backup: just now';
+          } catch (err) {
+            toast('Backup failed: ' + err.message, 5000);
+          }
+          btn.disabled = false;
+        },
+      }, 'Back up now'),
+      h('button', { class: 'btn', onclick: () => pickRepoBackup() }, 'Restore…'),
+    ),
+    h('details', { class: 'setup' },
+      h('summary', {}, 'Backup files'),
+      h('p', { class: 'note' }, 'A single .zip with everything, images included, saved to your downloads. Handy for keeping a copy outside GitHub.'),
+      h('div', { class: 'row-btns' },
+        h('button', { class: 'btn', onclick: downloadBackup }, 'Download a copy'),
+        h('button', { class: 'btn', onclick: () => restoreInput.click() }, 'Restore from file'),
+        restoreInput,
+      ),
+    ),
+  ];
+}
+
+async function pickRepoBackup() {
+  toast('Loading backups…', 10000);
+  let backups;
+  try {
+    backups = await listRepoBackups();
+  } catch (err) {
+    return toast("Couldn't load backups: " + err.message, 5000);
+  }
+  toast('Backups loaded', 1);
+  if (!backups.length) {
+    return dialog({ title: 'No backups yet', body: h('p', {}, 'Tap "Back up now" to make the first one.') });
+  }
+  const choice = await dialog({
+    title: 'Restore a backup',
+    body: h('div', {},
+      h('p', { class: 'note' }, 'This device goes back to how it was at that moment. Anything deleted since comes back on your other devices too.'),
+      h('div', { class: 'backup-list' }, backups.map((b, i) =>
+        h('label', { class: 'check' },
+          h('input', { type: 'radio', name: 'backup', value: b.path, checked: i === 0 }),
+          h('span', {}, new Date(b.time).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }), i === 0 ? ' (latest)' : ''),
+        ),
+      )),
+    ),
+    buttons: [
+      { label: 'Cancel', value: null },
+      { label: 'Restore', danger: true, value: () => document.querySelector('.dialog input[name=backup]:checked')?.value },
+    ],
+  });
+  if (!choice) return;
+  try {
+    await restoreFromRepo(choice, (m) => toast(m, 20000));
+    toast('Backup restored');
+    setTimeout(() => location.reload(), 600);
+  } catch (err) {
+    toast('Restore failed: ' + err.message, 5000);
+  }
 }

@@ -1,16 +1,14 @@
 import { ZipWriter, BlobWriter, BlobReader, ZipReader, TextReader, TextWriter } from '@zip.js/zip.js';
-import { db, setKV } from './db.js';
+import { db, setKV, SYNCED_TABLES } from './db.js';
 import { getSettings } from './store.js';
 import { mimeFor } from './import/apkg.js';
 
 const VERSION = 1;
 
-/** Everything (decks, cards, history, images) in one .zip. API keys are left out on purpose. */
-export async function exportBackup(onProgress = () => {}) {
-  const writer = new ZipWriter(new BlobWriter('application/zip'), { level: 0 });
+/** Everything except image files, as plain data. API keys are left out on purpose. */
+export async function collectBackupData() {
   const { anthropicKey, openaiKey, ...settings } = await getSettings();
-  const mediaNames = await db.media.toCollection().primaryKeys();
-  const data = {
+  return {
     version: VERSION,
     exportedAt: new Date().toISOString(),
     settings,
@@ -19,15 +17,45 @@ export async function exportBackup(onProgress = () => {}) {
     notes: await db.notes.toArray(),
     cards: await db.cards.toArray(),
     reviews: await db.reviews.toArray(),
-    media: mediaNames,
+    media: await db.media.toCollection().primaryKeys(),
   };
+}
+
+/** Everything (decks, cards, history, images) in one .zip for downloading. */
+export async function exportBackup(onProgress = () => {}) {
+  const writer = new ZipWriter(new BlobWriter('application/zip'), { level: 0 });
+  const data = await collectBackupData();
   await writer.add('data.json', new TextReader(JSON.stringify(data)));
-  for (let i = 0; i < mediaNames.length; i++) {
-    const row = await db.media.get(mediaNames[i]);
+  for (let i = 0; i < data.media.length; i++) {
+    const row = await db.media.get(data.media[i]);
     await writer.add(`media/${i}`, new BlobReader(row.blob));
-    if (i % 25 === 0) onProgress(`Packing images… ${i}/${mediaNames.length}`);
+    if (i % 25 === 0) onProgress(`Packing images… ${i}/${data.media.length}`);
   }
   return writer.close();
+}
+
+/**
+ * Replaces this device's study data with a backup. Restored records count as fresh changes,
+ * so with sync on they're uploaded and anything deleted since comes back on other devices too.
+ */
+export async function restoreData(data, { clearMedia = true } = {}) {
+  const current = await getSettings();
+  const tables = [...SYNCED_TABLES.map((t) => db.table(t)), db.tombstones, db.kv, ...(clearMedia ? [db.media] : [])];
+  await db.transaction('rw', tables, async () => {
+    await Promise.all([...SYNCED_TABLES.map((t) => db.table(t).clear()), ...(clearMedia ? [db.media.clear()] : [])]);
+    // Backups made before sync existed have numeric "revlog" entries
+    const reviews = data.reviews || (data.revlog || []).map(({ id, ...r }) => ({ ...r, id: `${r.time}-${r.cid}` }));
+    // Strip sync stamps so restored data is uploaded as fresh changes
+    const fresh = (rows) => rows.map(({ mod, dirty, ...r }) => r);
+    const restored = { decks: data.decks, notetypes: data.notetypes, notes: data.notes, cards: data.cards, reviews };
+    for (const [t, rows] of Object.entries(restored)) {
+      await db.table(t).bulkPut(fresh(rows));
+      // Forget earlier deletions of anything we just brought back, or they'd block future updates
+      await db.tombstones.bulkDelete(rows.map((r) => `${t}:${r.id}`));
+    }
+    // Keep the API keys already on this device
+    await setKV('settings', { ...data.settings, anthropicKey: current.anthropicKey, openaiKey: current.openaiKey });
+  });
 }
 
 export async function restoreBackup(file, onProgress = () => {}) {
@@ -37,23 +65,7 @@ export async function restoreBackup(file, onProgress = () => {}) {
   if (!dataEntry) throw new Error("That file isn't a backup from this app.");
   const data = JSON.parse(await dataEntry.getData(new TextWriter()));
   const byName = new Map(entries.map((e) => [e.filename, e]));
-  const current = await getSettings();
-
-  await db.transaction('rw', [db.decks, db.notetypes, db.notes, db.cards, db.reviews, db.media, db.kv], async () => {
-    await Promise.all([db.decks.clear(), db.notetypes.clear(), db.notes.clear(), db.cards.clear(), db.reviews.clear(), db.media.clear()]);
-    // Backups made before sync existed have numeric "revlog" entries
-    const reviews = data.reviews || (data.revlog || []).map(({ id, ...r }) => ({ ...r, id: `${r.time}-${r.cid}` }));
-    // Strip sync stamps so restored data is uploaded as fresh changes
-    const fresh = (rows) => rows.map(({ mod, dirty, ...r }) => r);
-    await db.decks.bulkPut(fresh(data.decks));
-    await db.notetypes.bulkPut(fresh(data.notetypes));
-    await db.notes.bulkPut(fresh(data.notes));
-    await db.cards.bulkPut(fresh(data.cards));
-    await db.reviews.bulkPut(fresh(reviews));
-    // Keep the API keys already on this device
-    await setKV('settings', { ...data.settings, anthropicKey: current.anthropicKey, openaiKey: current.openaiKey });
-  });
-
+  await restoreData(data);
   for (let i = 0; i < data.media.length; i++) {
     const entry = byName.get(`media/${i}`);
     if (!entry) continue;

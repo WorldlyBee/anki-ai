@@ -2,11 +2,15 @@ import { ZipWriter, ZipReader, Uint8ArrayWriter, Uint8ArrayReader, BlobReader, B
 import { db, getKV, setKV, SYNCED_TABLES, onLocalChange, markAllDirty } from '../db.js';
 import { GitHubRepo } from './github.js';
 import { mimeFor } from '../import/apkg.js';
+import { collectBackupData, restoreData } from '../backup.js';
 
 // Repo layout:
 //   journal/<device>/<time>.json.gz   changes uploaded by one device in one sync
 //   snapshot/<time>.json.gz           everything, written now and then so old journals can be removed
 //   media/<device>-<time>-<n>.zip     images and audio, bundled so uploads stay few
+//   backups/<time>.json.gz            dated snapshots you can roll back to (images live in media/)
+const BACKUPS_KEPT = 12;
+const BACKUP_EVERY = 7 * 86_400_000;
 const PACK_LIMIT = 20 * 1024 * 1024;
 // Journal files allowed before they're folded into a snapshot (tests lower it via localStorage)
 const compactAfter = () => Number(globalThis.localStorage?.getItem('anki-ai-compact-after')) || 150;
@@ -207,8 +211,14 @@ async function runSync({ onProgress = () => {} } = {}) {
       await compact(gh, journals.filter((p) => applied.has(p)), snapshots, mediaIndex, deviceId);
     }
 
+    // ---- weekly backup ----
+    if (Date.now() - (await getKV('lastBackup', 0)) > BACKUP_EVERY && (await db.cards.count())) {
+      onProgress('Making weekly backup…');
+      await writeRepoBackup(gh);
+    }
+
     const lastSync = Date.now();
-    await setKV('syncState', { ...state, applied: [...applied], mediaIndex, lastSync });
+    await setKV('syncState', { ...(await getKV('syncState')), lastSync });
     setStatus({ state: 'idle', lastSync, error: null, lastPulled: pulled });
     return { pulled, pushed };
   } catch (err) {
@@ -216,6 +226,66 @@ async function runSync({ onProgress = () => {} } = {}) {
     setStatus({ state: 'error', error: friendly(err) });
     throw err;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Backups in the repo
+
+async function writeRepoBackup(gh) {
+  const data = await collectBackupData();
+  const path = `backups/${Date.now()}.json.gz`;
+  const sha = await gh.writeBlob(await gzipJson(data));
+  const { files } = await gh.files(await gh.head());
+  const older = [...files.keys()].filter((p) => p.startsWith('backups/')).sort(byTimestamp);
+  const drop = older.slice(0, Math.max(0, older.length + 1 - BACKUPS_KEPT));
+  await gh.commit([{ path, sha }, ...drop.map((p) => ({ path: p, sha: null }))], `Backup from ${deviceLabel()}`);
+  await setKV('lastBackup', Date.now());
+  return { path, cards: data.cards.length };
+}
+
+async function connected() {
+  const config = await getSyncConfig();
+  if (!config) throw new Error('Sync is off.');
+  const gh = new GitHubRepo(config);
+  await gh.init();
+  return gh;
+}
+
+/** Saves a dated backup of this device's cards and history into the sync repo. */
+export async function backupToRepo() {
+  return writeRepoBackup(await connected());
+}
+
+/** Backups in the repo, newest first: [{ path, time }] */
+export async function listRepoBackups() {
+  const gh = await connected();
+  const { files } = await gh.files(await gh.head());
+  return [...files.keys()]
+    .filter((p) => p.startsWith('backups/'))
+    .sort(byTimestamp)
+    .reverse()
+    .map((path) => ({ path, time: stampOf(path) }));
+}
+
+/** Rolls this device back to a repo backup, then syncs so other devices get anything that was deleted. */
+export async function restoreFromRepo(path, onProgress = () => {}) {
+  const gh = await connected();
+  onProgress('Downloading backup…');
+  const { files } = await gh.files(await gh.head());
+  const data = await gunzipJson(await gh.readBlob(files.get(path)));
+  // Images aren't in the backup; they stay on the device and in the repo's media bundles
+  await restoreData(data, { clearMedia: false });
+  await syncNow({ onProgress }).catch(() => {});
+}
+
+/** After "erase all", forget what was downloaded so the next sync brings everything back. */
+export async function forgetPulledData() {
+  if (!(await getSyncConfig())) return;
+  const state = await getKV('syncState', {});
+  await setKV('syncState', { ...state, applied: [], mediaIndex: {} });
+  await db.tombstones.clear();
+  // Become a "new" device so this device's own earlier uploads (deletions included) are replayed too
+  await setKV('deviceId', newDeviceId());
 }
 
 /** Which copy of a record should win when two devices disagree. */

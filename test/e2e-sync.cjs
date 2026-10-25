@@ -228,6 +228,53 @@ async function studyOne(page, deck, ease = 'good') {
   console.log('auto-sync uploaded the answer within ~30s:', autoSynced);
   assert.ok(autoSynced);
 
+  // ===== 4c. Backups in the repo: back up, delete a deck by accident, restore =====
+  const weekly = repoFiles().filter((f) => f.startsWith('backups/')).length;
+  console.log('automatic backups already in repo:', weekly);
+  await phone.goto(BASE + '#/settings');
+  await phone.click('button:has-text("Back up now")');
+  await phone.waitForFunction(() => /Backed up \d+ cards/.test(document.getElementById('toast')?.textContent || ''), null, { timeout: 15000 });
+  assert.equal(repoFiles().filter((f) => f.startsWith('backups/')).length, weekly + 1);
+  await phone.goto(BASE + '#/');
+  await phone.waitForSelector('.deck-row');
+  const beforeDelete = await rows(phone); // what the backup captured
+  await phone.goto(BASE + '#/');
+  await phone.click('.deck-row:has-text("Medicine") .icon-btn');
+  await phone.click('.dialog button:has-text("Delete deck")');
+  await phone.click('.dialog button.danger:has-text("Delete")');
+  await phone.waitForTimeout(300);
+  await syncNow(phone);
+  await syncNow(laptop);
+  await laptop.goto(BASE + '#/');
+  await laptop.waitForSelector('.empty, .deck-row');
+  console.log('laptop after phone deleted Medicine:', await rows(laptop));
+  await phone.goto(BASE + '#/settings');
+  await phone.click('button:has-text("Restore…")');
+  await phone.waitForSelector('.dialog input[name=backup]');
+  await phone.click('.dialog .btn.danger');
+  await phone.waitForFunction(() => /Backup restored/.test(document.getElementById('toast')?.textContent || ''), null, { timeout: 20000 });
+  await phone.waitForTimeout(1500);
+  await phone.goto(BASE + '#/');
+  await phone.waitForSelector('.deck-row');
+  await syncNow(laptop);
+  await laptop.goto(BASE + '#/');
+  await laptop.waitForSelector('.deck-row');
+  const [restoredP, restoredL] = [await rows(phone), await rows(laptop)];
+  console.log('after restoring the backup → phone:', restoredP, '| laptop:', restoredL, '| before delete:', beforeDelete);
+  assert.deepEqual(restoredP, beforeDelete);
+  assert.deepEqual(restoredL, beforeDelete);
+
+  // ===== 4d. Erase everything on the laptop; the next sync brings it all back =====
+  await laptop.goto(BASE + '#/settings');
+  await laptop.click('button:has-text("Erase all study data")');
+  await laptop.click('.dialog .btn.danger');
+  await laptop.waitForSelector('.empty');
+  await syncNow(laptop);
+  await laptop.goto(BASE + '#/');
+  await laptop.waitForSelector('.deck-row');
+  console.log('laptop after erase + sync:', await rows(laptop));
+  assert.deepEqual(await rows(laptop), beforeDelete);
+
   // ===== 5. A phone that already had data before sync existed (database v1) =====
   const old = await device(browser, 'old-phone', devices['Pixel 7']);
   await old.goto(BASE + 'icon.svg'); // same origin, without the app running

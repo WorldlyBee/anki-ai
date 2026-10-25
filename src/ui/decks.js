@@ -4,7 +4,7 @@ import { buildQueues } from '../scheduler.js';
 import { exportBackup } from '../backup.js';
 import { h, icon, toast, dialog, menu } from './dom.js';
 import { navigate, onLeave } from '../router.js';
-import { getSyncStatus, onSyncStatus } from '../sync/sync.js';
+import { getSyncStatus, onSyncStatus, getSyncConfig, backupToRepo } from '../sync/sync.js';
 import { syncStatusText } from './syncSettings.js';
 
 export async function renderDecks(app) {
@@ -114,6 +114,16 @@ async function runImport(app, file) {
 }
 
 async function runBackup() {
+  if (await getSyncConfig()) {
+    toast('Backing up to GitHub…', 20000);
+    try {
+      const r = await backupToRepo();
+      toast(`Backed up ${r.cards} cards to GitHub`);
+    } catch (err) {
+      toast('Backup failed: ' + err.message, 5000);
+    }
+    return;
+  }
   toast('Preparing backup…', 10000);
   try {
     const blob = await exportBackup((msg) => toast(msg, 10000));
