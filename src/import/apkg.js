@@ -21,7 +21,12 @@ export const mimeFor = (name) => MIME[name.split('.').pop().toLowerCase()] || 'a
  */
 export async function parseApkg(file, SQL, onProgress = () => {}) {
   const zip = new ZipReader(new BlobReader(file));
-  const entries = await zip.getEntries();
+  let entries;
+  try {
+    entries = await zip.getEntries();
+  } catch {
+    throw new Error("That doesn't look like an Anki deck. Pick an .apkg or .colpkg file exported from Anki.");
+  }
   const byName = new Map(entries.map((e) => [e.filename, e]));
 
   const colEntry =

@@ -18,8 +18,11 @@ export async function renderDecks(app) {
   const hasCards = new Set(cards.map((c) => c.did));
   const visible = decks.filter((d) => decks.some((x) => (x.id === d.id || x.name.startsWith(d.name + '::')) && hasCards.has(x.id)));
 
+  // iPhones grey out file types they don't recognise (like .apkg), so don't filter there;
+  // the importer checks the file is really an Anki deck anyway
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const fileInput = h('input', {
-    type: 'file', accept: '.apkg,.colpkg,.zip', style: { display: 'none' },
+    type: 'file', accept: isIOS ? null : '.apkg,.colpkg,.zip', 'data-import': '', style: { display: 'none' },
     onchange: (e) => e.target.files[0] && runImport(app, e.target.files[0]),
   });
 
