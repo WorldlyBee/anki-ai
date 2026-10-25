@@ -63,7 +63,7 @@ export class GitHubRepo {
       // Brand-new empty repo
       await this.req('/contents/README.md', {
         method: 'PUT',
-        body: { message: 'Set up Anki AI sync', content: btoa('Sync data for Anki AI. Managed by the app; please don\'t edit by hand.\n') },
+        body: { message: 'Set up Aristotle sync', content: btoa('Sync data for Aristotle. Managed by the app; please don\'t edit by hand.\n') },
       });
     }
   }

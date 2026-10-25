@@ -185,7 +185,7 @@ export async function renderSettings(app) {
 async function downloadBackup() {
   toast('Preparing backup…', 10000);
   const blob = await exportBackup((m) => toast(m, 10000));
-  const a = h('a', { href: URL.createObjectURL(blob), download: `anki-ai-backup-${new Date().toISOString().slice(0, 10)}.zip` });
+  const a = h('a', { href: URL.createObjectURL(blob), download: `aristotle-backup-${new Date().toISOString().slice(0, 10)}.zip` });
   document.body.append(a);
   a.click();
   a.remove();

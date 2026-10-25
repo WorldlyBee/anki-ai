@@ -1,8 +1,55 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#1e64c8"/>
-  <rect x="118" y="112" width="232" height="300" rx="28" fill="#ffffff" opacity="0.35" transform="rotate(-10 234 262)"/>
-  <rect x="150" y="104" width="232" height="300" rx="28" fill="#ffffff"/>
-  <path d="M266 170l17 40 43 4-33 28 10 42-37-23-37 23 10-42-33-28 43-4z" fill="#1e64c8"/>
-  <circle cx="372" cy="380" r="76" fill="#2e9d4f" stroke="#1e64c8" stroke-width="14"/>
-  <path d="M372 336a20 20 0 0 1 20 20v26a20 20 0 0 1-40 0v-26a20 20 0 0 1 20-20zm-34 44h10a24 24 0 0 0 48 0h10a34 34 0 0 1-29 33.6V426h-10v-12.4A34 34 0 0 1 338 380z" fill="#fff"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#24427c"/><stop offset="1" stop-color="#122347"/></linearGradient>
+    <linearGradient id="marble" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#fdf9f1"/><stop offset="1" stop-color="#e6dac6"/></linearGradient>
+    <clipPath id="coin"><circle cx="256" cy="256" r="190"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="190" fill="#1a3264"/>
+  <g clip-path="url(#coin)"><g transform="translate(256 268) scale(1.1) translate(-262 -262)">
+    <!-- drapery / shoulders -->
+    <path fill="#e9dfcd" d="M120 470 C140 420 190 400 226 392 L300 396 C340 404 380 424 400 470 Z"/>
+    <path fill="none" stroke="#cdbfa6" stroke-width="8" stroke-linecap="round" d="M190 420 C230 440 270 450 330 430 M210 446 C250 462 300 462 350 448"/>
+    <!-- neck -->
+    <path fill="#efe5d3" d="M248 344 L250 404 C266 412 286 412 300 404 L298 346 Z"/>
+    <!-- head & face -->
+    <path fill="url(#marble)" d="
+      M 196 304 C 172 262 170 196 204 158 C 236 122 296 114 326 142
+      C 340 156 346 176 344 192 L 350 204
+      C 352 212 356 222 362 232 L 384 262
+      C 387 267 384 271 378 271 L 362 272
+      C 366 280 364 286 358 289 L 300 320 L 244 334 C 226 330 206 320 196 304 Z"/>
+    <!-- hair cap with wavy edge -->
+    <path fill="#d3c2a2" d="
+      M 196 304 C 172 262 170 196 204 158 C 236 122 296 114 326 142 C 334 150 338 158 340 168
+      C 334 164 328 166 326 172 C 320 166 312 168 311 176 C 304 171 296 174 296 182
+      C 288 178 280 183 281 191 C 273 189 266 195 268 203 C 260 202 254 209 257 217
+      C 249 218 245 225 249 232 C 241 235 239 243 244 249 C 236 253 236 262 242 267
+      C 234 272 235 281 242 285 C 234 291 236 301 244 304 C 238 312 240 322 246 330
+      C 228 328 208 318 196 304 Z"/>
+    <g fill="none" stroke="#bba67f" stroke-width="5" stroke-linecap="round">
+      <path d="M214 180 q14 -10 26 2"/><path d="M246 160 q14 -10 26 2"/><path d="M280 148 q14 -8 24 4"/>
+      <path d="M204 216 q12 -10 24 0"/><path d="M200 252 q12 -10 22 0"/>
+    </g>
+    <!-- beard -->
+    <path fill="#dccdb1" d="
+      M 358 288 C 372 296 372 308 362 314 C 374 322 372 336 360 340 C 368 352 360 366 346 366
+      C 348 380 334 390 320 384 C 314 398 294 400 286 388 C 274 396 256 390 254 376
+      C 240 378 230 366 234 352 C 222 346 222 330 232 324 L 250 300 C 270 306 290 300 300 290 C 316 296 340 292 358 288 Z"/>
+    <g fill="none" stroke="#b8a37c" stroke-width="5" stroke-linecap="round">
+      <path d="M340 302 q-12 8 -6 20"/><path d="M314 308 q-12 10 -4 24"/><path d="M286 312 q-12 10 -4 24"/><path d="M258 318 q-10 10 -4 22"/>
+      <path d="M332 340 q-10 10 -2 22"/><path d="M304 346 q-10 10 -2 22"/><path d="M276 350 q-10 10 -2 20"/>
+    </g>
+    <!-- moustache -->
+    <path fill="#d8caae" d="M378 272 C 372 284 356 292 336 290 C 344 282 356 274 378 272 Z"/>
+    <!-- ear, brow, eye -->
+    <g fill="none" stroke="#bfae8d" stroke-width="6" stroke-linecap="round">
+      <path d="M262 236 c-16 -2 -20 26 -2 30"/>
+      <path d="M318 198 q14 -8 30 2"/>
+      <path d="M326 216 q8 3 14 -1"/>
+      <path d="M352 236 q-6 14 4 24"/>
+    </g>
+  </g></g>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#c9a85c" stroke-width="12"/>
+  <circle cx="256" cy="256" r="174" fill="none" stroke="#c9a85c" stroke-width="3" opacity="0.55"/>
 </svg>

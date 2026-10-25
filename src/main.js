@@ -1,4 +1,6 @@
 import 'katex/dist/katex.min.css';
+import '@fontsource/cormorant-garamond/600.css';
+import '@fontsource/cormorant-garamond/500-italic.css';
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { startRouter } from './router.js';

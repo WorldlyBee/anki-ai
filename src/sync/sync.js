@@ -13,7 +13,7 @@ const BACKUPS_KEPT = 12;
 const BACKUP_EVERY = 7 * 86_400_000;
 const PACK_LIMIT = 20 * 1024 * 1024;
 // Journal files allowed before they're folded into a snapshot (tests lower it via localStorage)
-const compactAfter = () => Number(globalThis.localStorage?.getItem('anki-ai-compact-after')) || 150;
+const compactAfter = () => Number(globalThis.localStorage?.getItem('aristotle-compact-after')) || 150;
 
 let running = null;
 let again = false;

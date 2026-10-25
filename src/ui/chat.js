@@ -37,7 +37,7 @@ export class ChatSheet {
     this.el = h('section', { class: 'sheet', 'aria-label': 'Ask the AI' },
       h('div', { class: 'sheet-head' },
         h('div', { class: 'grip' }),
-        h('h3', {}, 'Ask about this card'),
+        h('h3', {}, 'Ask Aristotle'),
         h('button', { class: 'icon-btn', 'aria-label': 'Expand', html: icons.chevron, style: { transform: 'rotate(-90deg)' }, onclick: () => this.el.classList.toggle('tall') }),
         h('button', { class: 'icon-btn', 'aria-label': 'Minimise', html: icons.down, onclick: () => this.close() }),
       ),

@@ -8,6 +8,7 @@ import { h, icon, toast, menu } from './dom.js';
 import { ChatSheet } from './chat.js';
 import { navigate, onLeave } from '../router.js';
 import { isDarkTheme } from '../theme.js';
+import { quoteOfTheDay } from '../quotes.js';
 
 const BASE_CARD_CSS = `
 :host { display: block; }
@@ -156,7 +157,13 @@ export async function renderStudy(app, deckId) {
         ? `More learning cards are due in ${formatInterval(pick.waitUntil - now)}. Stay here and they'll appear, or come back later.`
         : 'You have finished this deck for now.';
       shadow.innerHTML = `<style>${BASE_CARD_CSS}</style>`;
-      cardScroll.replaceChildren(h('div', { class: 'done' }, h('h2', {}, 'Congratulations!'), h('p', {}, msg)));
+      const q = quoteOfTheDay();
+      cardScroll.replaceChildren(h('div', { class: 'done' },
+        h('img', { class: 'coin', src: 'icon-192.png', alt: '' }),
+        h('h2', {}, 'Congratulations!'),
+        h('p', {}, msg),
+        h('blockquote', { class: 'quote' }, h('p', {}, `“${q.text}”`), h('cite', {}, `Aristotle, ${q.source}`)),
+      ));
       if (pick.waitUntil) {
         waitTimer = setTimeout(() => {
           cardScroll.replaceChildren(host);

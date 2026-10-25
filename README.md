@@ -1,6 +1,8 @@
-# Anki AI
+# Aristotle
 
-Anki-style flashcards with an AI tutor one tap away. Study like you do in AnkiDroid, and when a card doesn't click, tap the mic, ask your question out loud, and read the answer right there. The card (text and images) is sent along automatically.
+**Anki-style spaced repetition with an integrated AI tutor.**
+
+Named for history's most famous tutor. Flashcards with an AI tutor one tap away. Study like you do in AnkiDroid, and when a card doesn't click, tap the mic, ask your question out loud, and read the answer right there. The card (text and images) is sent along automatically.
 
 - Anki-like look: deck list with New / Learn / Due counts, Show Answer, Again / Hard / Good / Easy with intervals
 - FSRS scheduling (the same algorithm modern Anki uses), daily limits per deck, learning steps, undo, bury, suspend
@@ -13,12 +15,12 @@ Anki-style flashcards with an AI tutor one tap away. Study like you do in AnkiDr
 
 ## Put it on your phone
 
-1. Open the app's address in **Chrome on Android** (after deploying, it's `https://<your-github-username>.github.io/anki-ai/`).
+1. Open the app's address in **Chrome on Android** (after deploying, it's `https://<your-github-username>.github.io/<repo-name>/`).
 2. Chrome menu → **Add to Home screen** → **Install**. It now opens full-screen from its own icon.
 3. Open **Settings** (⋮ menu) and paste an API key:
    - Claude: [console.anthropic.com](https://console.anthropic.com) → API keys
    - ChatGPT: [platform.openai.com](https://platform.openai.com) → API keys
-4. Bring your cards over from AnkiDroid: AnkiDroid menu → **Export** → **Collection package (.colpkg)** with media and scheduling included → in Anki AI tap **+ Import** and pick the file.
+4. Bring your cards over from AnkiDroid: AnkiDroid menu → **Export** → **Collection package (.colpkg)** with media and scheduling included → in Aristotle tap **+ Import** and pick the file.
 
 ### Use it on your laptop too
 

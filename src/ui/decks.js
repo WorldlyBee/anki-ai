@@ -22,8 +22,8 @@ export async function renderDecks(app) {
     onchange: (e) => e.target.files[0] && runImport(app, e.target.files[0]),
   });
 
-  const top = h('header', { class: 'topbar' },
-    h('h1', {}, 'Decks'),
+  const top = h('header', { class: 'topbar brand' },
+    h('div', { class: 'brand-mark' }, h('img', { src: 'icon-192.png', alt: '' }), h('span', {}, 'Aristotle')),
     h('button', {
       class: 'icon-btn', 'aria-label': 'Menu', html: icon('more').outerHTML,
       onclick: (e) => menu(e.currentTarget, [
@@ -37,7 +37,8 @@ export async function renderDecks(app) {
   const list = h('div', { class: 'scroll' });
   if (!visible.length) {
     list.append(h('div', { class: 'empty' },
-      h('h2', {}, 'No decks yet'),
+      h('img', { class: 'coin', src: 'icon-192.png', alt: '' }),
+      h('h2', {}, 'Welcome to Aristotle'),
       h('p', {}, 'Bring your cards over from AnkiDroid:'),
       h('ol', {},
         h('li', {}, 'In AnkiDroid, open the menu → Export collection.'),
@@ -127,7 +128,7 @@ async function runBackup() {
   toast('Preparing backup…', 10000);
   try {
     const blob = await exportBackup((msg) => toast(msg, 10000));
-    const a = h('a', { href: URL.createObjectURL(blob), download: `anki-ai-backup-${new Date().toISOString().slice(0, 10)}.zip` });
+    const a = h('a', { href: URL.createObjectURL(blob), download: `aristotle-backup-${new Date().toISOString().slice(0, 10)}.zip` });
     document.body.append(a);
     a.click();
     a.remove();

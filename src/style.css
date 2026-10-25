@@ -5,9 +5,12 @@
   --text: #1c1c1e;
   --muted: #6b6f76;
   --border: #e3e5e8;
-  --bar: #1e64c8;
+  --bar: #1d3566;
   --bar-text: #ffffff;
-  --accent: #1e64c8;
+  --accent: #2a4f94;
+  --gold: #b8934a;
+  --link: #2a4f94;
+  --serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   --new: #1e73e8;
   --learn: #d93025;
   --due: #188038;
@@ -15,7 +18,7 @@
   --hard: #6b7480;
   --good: #2e9d4f;
   --easy: #2f7fe0;
-  --bubble-user: #1e64c8;
+  --bubble-user: #2a4f94;
   --bubble-user-text: #fff;
   --bubble-ai: #f0f2f5;
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
@@ -24,19 +27,19 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --bg: #121212; --surface: #1d1d1f; --surface-2: #2a2a2d; --text: #ececec; --muted: #9a9ea6;
-    --border: #2f3033; --bar: #1d1d1f; --bar-text: #ececec; --accent: #6ea8ff;
+    --border: #2f3033; --bar: #172038; --bar-text: #ececec; --accent: #3f67b0; --link: #8fb0ec; --gold: #d4b46a;
     --new: #6ea8ff; --learn: #ff7a6e; --due: #5fd17f;
     --again: #b8463b; --hard: #565c66; --good: #2d8a49; --easy: #2f6fc4;
-    --bubble-user: #2f5fb0; --bubble-ai: #2a2a2d; --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    --bubble-user: #34548f; --bubble-ai: #2a2a2d; --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
   --bg: #121212; --surface: #1d1d1f; --surface-2: #2a2a2d; --text: #ececec; --muted: #9a9ea6;
-  --border: #2f3033; --bar: #1d1d1f; --bar-text: #ececec; --accent: #6ea8ff;
+  --border: #2f3033; --bar: #172038; --bar-text: #ececec; --accent: #3f67b0; --link: #8fb0ec; --gold: #d4b46a;
   --new: #6ea8ff; --learn: #ff7a6e; --due: #5fd17f;
   --again: #b8463b; --hard: #565c66; --good: #2d8a49; --easy: #2f6fc4;
-  --bubble-user: #2f5fb0; --bubble-ai: #2a2a2d; --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  --bubble-user: #34548f; --bubble-ai: #2a2a2d; --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -235,7 +238,7 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* ---------- settings ---------- */
 .settings { padding: 8px 16px 48px; max-width: 640px; margin: 0 auto; width: 100%; }
-.settings h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); margin: 28px 0 4px; }
+.settings h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--link); margin: 28px 0 4px; }
 .settings .row-btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
 .settings .note { color: var(--muted); font-size: 14px; }
 .inline { display: flex; gap: 8px; }
@@ -244,10 +247,22 @@ input, select, textarea { font: inherit; color: inherit; }
 /* ---------- sync ---------- */
 .sync-line { padding-top: 0; font-size: 13px; cursor: pointer; }
 .settings details.setup { margin: 8px 0; }
-.settings details.setup summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 6px 0; }
+.settings details.setup summary { cursor: pointer; color: var(--link); font-weight: 600; padding: 6px 0; }
 .settings ol.note { padding-left: 20px; }
 .settings ol.note li { margin: 6px 0; }
-.settings a { color: var(--accent); }
+.settings a { color: var(--link); }
 code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
 .qr { background: #fff; padding: 12px; border-radius: 12px; width: min(280px, 100%); margin: 8px auto; }
 .qr svg { display: block; width: 100%; height: auto; }
+
+/* ---------- Aristotle touches ---------- */
+.topbar.brand { box-shadow: inset 0 -2px 0 var(--gold), 0 1px 3px rgba(0, 0, 0, 0.2); }
+.brand-mark { display: flex; align-items: center; gap: 10px; flex: 1; margin-left: 10px; min-width: 0; }
+.brand-mark img { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; }
+.brand-mark span { font-family: var(--serif); font-weight: 600; font-size: 27px; letter-spacing: 0.02em; line-height: 1; }
+.empty .coin, .done .coin { width: 76px; height: 76px; border-radius: 18px; box-shadow: var(--shadow); }
+.empty h2, .done h2 { font-family: var(--serif); font-weight: 600; font-size: 30px; letter-spacing: 0.01em; }
+.quote { max-width: 420px; margin: 28px auto 0; padding-top: 18px; border-top: 1px solid var(--border); }
+.quote p { font-family: var(--serif); font-style: italic; font-size: 21px; line-height: 1.35; color: var(--text); margin: 0 0 8px; }
+.quote cite { font-style: normal; font-size: 13px; color: var(--muted); letter-spacing: 0.02em; }
+.sheet-head h3 { font-family: var(--serif); font-size: 21px; font-weight: 600; color: var(--text); letter-spacing: 0.01em; }

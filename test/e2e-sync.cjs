@@ -327,7 +327,7 @@ async function studyOne(page, deck, ease = 'good') {
   console.log('phone picks up old deck too:', await rows(phone));
 
   // ===== 6. History cleanup: laptop compacts while the phone is behind; a brand-new device joins after =====
-  await laptop.evaluate(() => localStorage.setItem('anki-ai-compact-after', '2'));
+  await laptop.evaluate(() => localStorage.setItem('aristotle-compact-after', '2'));
   await studyOne(laptop, 'Medicine', 'good');
   await syncNow(laptop);
   await studyOne(laptop, 'Old Deck', 'good');

@@ -1,6 +1,7 @@
 import Dexie from 'dexie';
 
 // All study data lives in IndexedDB on the device.
+// The database keeps the app's original name so existing cards on installed devices aren't lost
 export const db = new Dexie('anki-ai');
 
 db.version(1).stores({
