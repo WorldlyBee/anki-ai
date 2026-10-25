@@ -326,11 +326,31 @@ async function studyOne(page, deck, ease = 'good') {
   await phone.waitForSelector('.deck-row');
   console.log('phone picks up old deck too:', await rows(phone));
 
+  // Renaming: a clash is refused, a real rename syncs to the other device
+  await old.goto(BASE + '#/');
+  await old.waitForSelector('.deck-row');
+  await old.click('.deck-row:has(.label:text-is("Old Deck")) .icon-btn');
+  await old.fill('.dialog label:has-text("Name") input', 'medicine');
+  await old.click('.dialog button:has-text("Save")');
+  await old.waitForSelector('.dialog h2:has-text("Couldn\'t rename")');
+  console.log('rename clash message:', await old.innerText('.dialog p'));
+  await old.click('.dialog button:has-text("OK")');
+  await old.fill('.dialog label:has-text("Name") input', 'Pharmacology');
+  await old.click('.dialog button:has-text("Save")');
+  await old.waitForSelector('.deck-row .label:text-is("Pharmacology")');
+  await syncNow(old);
+  await syncNow(phone);
+  await phone.goto(BASE + '#/');
+  await phone.waitForSelector('.deck-row');
+  const afterRename = await rows(phone);
+  console.log('phone after old-phone renamed "Old Deck" → "Pharmacology":', afterRename);
+  assert.ok(afterRename.some((r) => r.startsWith('Pharmacology')) && !afterRename.some((r) => r.startsWith('Old Deck')));
+
   // ===== 6. History cleanup: laptop compacts while the phone is behind; a brand-new device joins after =====
   await laptop.evaluate(() => localStorage.setItem('aristotle-compact-after', '2'));
   await studyOne(laptop, 'Medicine', 'good');
   await syncNow(laptop);
-  await studyOne(laptop, 'Old Deck', 'good');
+  await studyOne(laptop, 'Pharmacology', 'good');
   await syncNow(laptop);
   const afterCompact = repoFiles();
   console.log('repo after compaction:', afterCompact.filter((f) => !f.startsWith('media/')));

@@ -74,6 +74,19 @@ const sse = (text) =>
   const rows = await page.$$eval('.deck-row', (r) => r.map((x) => x.innerText.replace(/\s+/g, ' ')));
   console.log('deck rows:', rows);
 
+  // Rename the parent deck: the subdeck should come along, and counts stay the same
+  const renameDeck = async (from, to) => {
+    await page.click(`.deck-row:has(.label:text-is("${from}")) .icon-btn`);
+    await page.fill('.dialog label:has-text("Name") input', to);
+    await page.click('.dialog button:has-text("Save")');
+    await page.waitForSelector(`.deck-row .label:text-is("${to}")`);
+  };
+  await renameDeck('Medicine', 'Med School');
+  const renamed = await page.$$eval('.deck-row', (r) => r.map((x) => x.innerText.replace(/\s+/g, ' ')));
+  console.log('after renaming Medicine → Med School:', renamed);
+  if (renamed[0] !== 'Med School 5 1 0' || renamed[1] !== 'Cardiology 1 0 0') throw new Error('rename broke the deck tree');
+  await renameDeck('Med School', 'Medicine');
+
   // Study
   await page.click('.deck-name >> text=Medicine');
   await page.waitForSelector('.answer-bar .show');

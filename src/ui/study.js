@@ -9,6 +9,7 @@ import { ChatSheet } from './chat.js';
 import { navigate, onLeave } from '../router.js';
 import { isDarkTheme } from '../theme.js';
 import { quoteOfTheDay } from '../quotes.js';
+import { setSoundsEnabled, playPageTurn, playRated } from '../sounds.js';
 
 const BASE_CARD_CSS = `
 :host { display: block; }
@@ -34,6 +35,7 @@ details.hint summary { color: #1e64c8; cursor: pointer; }
 
 export async function renderStudy(app, deckId) {
   const settings = await getSettings();
+  setSoundsEnabled(settings.soundEffects);
   const f = makeFsrs(settings);
   const decks = await db.decks.toArray();
   const deck = decks.find((d) => d.id === deckId);
@@ -197,6 +199,7 @@ export async function renderStudy(app, deckId) {
     if (!current || revealed) return;
     typed = shadow.querySelector('#typeans')?.value || '';
     revealed = true;
+    playPageTurn();
     preview = previewCard(current.card, f);
     await paintCard('a');
     paintAnswerBar();
@@ -204,6 +207,7 @@ export async function renderStudy(app, deckId) {
 
   async function answer(rating) {
     if (!current || !revealed) return;
+    playRated(rating);
     const now = Date.now();
     const prev = current.card;
     const updated = { ...preview[rating].card, buriedUntil: 0 };

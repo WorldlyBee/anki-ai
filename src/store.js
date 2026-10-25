@@ -17,6 +17,7 @@ export const defaultAppSettings = {
   voiceLang: '',
   autoSendSeconds: 2.5,
   autoSpeak: false,
+  soundEffects: true,
   sendImages: true,
   theme: 'system',
 };
@@ -44,11 +45,14 @@ export async function importFile(file, onProgress = () => {}) {
     const f = makeFsrs(settings);
     onProgress(`Saving ${data.notes.length} notes…`);
     await db.transaction('rw', db.decks, db.notetypes, db.notes, db.cards, async () => {
-      const existingDecks = new Map((await db.decks.toArray()).map((d) => [d.name, d]));
+      const localDecks = await db.decks.toArray();
+      const existingDecks = new Map(localDecks.map((d) => [d.name, d]));
+      const existingById = new Map(localDecks.map((d) => [d.id, d]));
       // Decks are matched by name so re-importing an updated deck merges into the same one
       const deckIdMap = new Map();
       for (const d of data.decks) {
-        const existing = existingDecks.get(d.name);
+        // By name first; by id catches a deck you've renamed since the last import
+        const existing = existingDecks.get(d.name) || existingById.get(d.id);
         if (existing) deckIdMap.set(d.id, existing.id);
         else {
           await db.decks.put({ id: d.id, name: d.name });
@@ -123,6 +127,29 @@ export async function undoAnswer(previousCard, logId) {
     await db.cards.put(card);
     await db.reviews.delete(logId);
     await tombstone('reviews', [logId]);
+  });
+}
+
+/** Renames a deck (just its own part of the name); its subdecks follow along. */
+export async function renameDeck(deckId, newLeaf) {
+  newLeaf = newLeaf.trim().replace(/\s+/g, ' ');
+  if (!newLeaf) throw new Error("The name can't be empty.");
+  if (newLeaf.includes('::')) throw new Error('Deck names can\'t contain "::".');
+  await db.transaction('rw', db.decks, async () => {
+    const decks = await db.decks.toArray();
+    const deck = decks.find((d) => d.id === deckId);
+    const parts = deck.name.split('::');
+    parts[parts.length - 1] = newLeaf;
+    const newName = parts.join('::');
+    if (newName === deck.name) return;
+    if (decks.some((d) => d.id !== deckId && d.name.toLowerCase() === newName.toLowerCase())) {
+      throw new Error(`There's already a deck called "${newLeaf}" there.`);
+    }
+    for (const d of decks) {
+      if (d.id === deckId || d.name.startsWith(deck.name + '::')) {
+        await db.decks.update(d.id, { name: newName + d.name.slice(deck.name.length) });
+      }
+    }
   });
 }
 

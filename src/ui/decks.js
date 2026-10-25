@@ -1,5 +1,5 @@
 import { db, getKV, setKV } from '../db.js';
-import { getSettings, importFile, todayLog, deleteDeck } from '../store.js';
+import { getSettings, importFile, todayLog, deleteDeck, renameDeck } from '../store.js';
 import { buildQueues } from '../scheduler.js';
 import { exportBackup } from '../backup.js';
 import { h, icon, toast, dialog, menu } from './dom.js';
@@ -140,11 +140,15 @@ async function runBackup() {
 }
 
 async function deckOptions(app, deck, settings) {
+  const leaf = deck.name.split('::').at(-1);
+  const parent = deck.name.split('::').slice(0, -1).join(' › ');
+  const nameIn = h('input', { type: 'text', value: leaf, autocomplete: 'off' });
   const newIn = h('input', { type: 'number', min: 0, value: deck.newPerDay ?? settings.newPerDay });
   const revIn = h('input', { type: 'number', min: 0, value: deck.revPerDay ?? settings.revPerDay });
   const choice = await dialog({
-    title: deck.name.split('::').at(-1),
+    title: 'Deck options',
     body: h('div', {},
+      h('label', { class: 'field' }, h('span', {}, 'Name'), nameIn, parent && h('small', {}, `Inside ${parent}`)),
       h('label', { class: 'field' }, h('span', {}, 'New cards per day'), newIn),
       h('label', { class: 'field' }, h('span', {}, 'Maximum reviews per day'), revIn),
       h('p', { class: 'note', style: { color: 'var(--muted)', fontSize: '14px' } }, 'Defaults for all decks live in Settings.'),
@@ -156,12 +160,18 @@ async function deckOptions(app, deck, settings) {
     ],
   });
   if (choice === 'save') {
+    try {
+      await renameDeck(deck.id, nameIn.value);
+    } catch (err) {
+      await dialog({ title: "Couldn't rename the deck", body: h('p', {}, err.message) });
+      return deckOptions(app, { ...deck }, settings);
+    }
     await db.decks.update(deck.id, { newPerDay: Number(newIn.value), revPerDay: Number(revIn.value) });
     renderDecks(app);
   } else if (choice === 'delete') {
     const sure = await dialog({
       title: 'Delete this deck?',
-      body: h('p', {}, `"${deck.name}" and all its cards and subdecks will be removed from this device.`),
+      body: h('p', {}, `"${deck.name.split('::').join(' › ')}" and all its cards and subdecks will be removed (from your other devices too, if sync is on). You can get it back from a backup.`),
       buttons: [{ label: 'Cancel', value: false }, { label: 'Delete', value: true, danger: true }],
     });
     if (sure) {

@@ -221,6 +221,7 @@ export async function renderSettings(app) {
         text('relearningSteps', 'Relearning steps', { hint: 'e.g. 10m' }),
       ),
       text('rolloverHour', 'Next day starts at (hour)', { type: 'number', hint: '4 = 4am, like Anki' }),
+      check('soundEffects', 'Sound effects (page turn on Show Answer, chime when you rate)'),
       select('theme', 'Theme', [['system', 'Follow system'], ['light', 'Light'], ['dark', 'Dark']]),
 
       h('h2', {}, 'Your data'),
