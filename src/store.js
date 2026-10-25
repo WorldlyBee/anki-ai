@@ -111,6 +111,30 @@ export async function todayLog(settings) {
   return db.reviews.where('time').aboveOrEqual(start).toArray();
 }
 
+/**
+ * Days in a row with at least one review (reviews from every synced device count). A streak is
+ * still alive today if you studied yesterday, so it isn't shown as broken first thing in the morning.
+ */
+export async function getStreak(settings) {
+  const start = (t) => dayStart(t, settings.rolloverHour);
+  const prevDay = (d) => start(d - 1);
+  const nextDay = (d) => start(d + 36 * 3_600_000); // lands mid-next-day, safe across DST changes
+  const days = new Set((await db.reviews.orderBy('time').keys()).map(start));
+  const today = start(Date.now());
+  const studiedToday = days.has(today);
+  let current = 0;
+  for (let d = studiedToday ? today : prevDay(today); days.has(d); d = prevDay(d)) current++;
+  let best = 0;
+  let run = 0;
+  let prev = null;
+  for (const d of [...days].sort((a, b) => a - b)) {
+    run = prev !== null && nextDay(prev) === d ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = d;
+  }
+  return { current, best, studiedToday };
+}
+
 export async function saveAnswer(updatedCard, logEntry) {
   const id = `${logEntry.time}-${logEntry.cid}`;
   await db.transaction('rw', db.cards, db.reviews, async () => {

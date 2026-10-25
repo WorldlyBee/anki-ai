@@ -24,22 +24,28 @@ function noise(c, seconds) {
   return buf;
 }
 
-/** One burst of filtered noise with a quick rise and fall. */
-function rustle(c, out, t, { dur, from, to, q = 0.9, peak, type = 'bandpass' }) {
+/**
+ * One breath of filtered noise. The extra lowpass takes off the fizzy top end (what makes noise
+ * sound like a maraca), and the smooth curves keep it free of hard edges.
+ */
+function rustle(c, out, t, { dur, from, to, q = 0.5, peak, attack = 0.35, lowpass = 2600 }) {
   const src = c.createBufferSource();
-  src.buffer = noise(c, dur + 0.05);
-  const filter = c.createBiquadFilter();
-  filter.type = type;
-  filter.Q.value = q;
-  filter.frequency.setValueAtTime(from, t);
-  filter.frequency.exponentialRampToValueAtTime(to, t + dur);
+  src.buffer = noise(c, dur + 0.1);
+  const band = c.createBiquadFilter();
+  band.type = 'bandpass';
+  band.Q.value = q;
+  band.frequency.setValueAtTime(from, t);
+  band.frequency.exponentialRampToValueAtTime(to, t + dur);
+  const soft = c.createBiquadFilter();
+  soft.type = 'lowpass';
+  soft.frequency.value = lowpass;
   const g = c.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(peak, t + dur * 0.3);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  src.connect(filter).connect(g).connect(out);
+  g.gain.setValueAtTime(0, t);
+  g.gain.setTargetAtTime(peak, t, dur * attack * 0.45); // gentle swell
+  g.gain.setTargetAtTime(0, t + dur * attack, dur * 0.22); // long, soft fade
+  src.connect(band).connect(soft).connect(g).connect(out);
   src.start(t);
-  src.stop(t + dur + 0.05);
+  src.stop(t + dur + 0.1);
 }
 
 /** A soft bell-like note: a sine plus a fainter octave that fades sooner. */
@@ -58,15 +64,14 @@ function bell(c, out, t, freq, { peak = 0.22, decay = 0.5 } = {}) {
   }
 }
 
-/** Page turning: the page lifts (rising swish), flips, and settles (soft papery tap). */
+/** A slow, soft page turn: the page lifts with a gentle swell, then settles with a longer, darker sigh. */
 export function pageTurn(c = audio(), out = c?.destination, t = c?.currentTime) {
   if (!c) return;
   const master = c.createGain();
-  master.gain.value = 1.9; // noise reads quieter than tones at the same level
+  master.gain.value = 0.6;
   master.connect(out);
-  rustle(c, master, t, { dur: 0.17, from: 700, to: 3800, q: 0.7, peak: 0.32 });
-  rustle(c, master, t + 0.13, { dur: 0.09, from: 4200, to: 2200, q: 1.1, peak: 0.2 });
-  rustle(c, master, t + 0.19, { dur: 0.05, from: 380, to: 160, q: 0.7, peak: 0.28, type: 'lowpass' });
+  rustle(c, master, t, { dur: 0.38, from: 450, to: 1900, peak: 0.6, attack: 0.5 });
+  rustle(c, master, t + 0.3, { dur: 0.4, from: 1400, to: 550, peak: 0.24, attack: 0.2, lowpass: 1800 });
 }
 
 const NOTES = { G4: 392.0, D5: 587.33, G5: 783.99, C6: 1046.5, E6: 1318.51 };
@@ -86,6 +91,15 @@ export function rated(rating, c = audio(), out = c?.destination, t = c?.currentT
   }
 }
 
+/** Finished a deck: a gentle rising fanfare. */
+export function complete(c = audio(), out = c?.destination, t = c?.currentTime) {
+  if (!c) return;
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => bell(c, out, t + i * 0.1, f, { peak: 0.13, decay: i === 3 ? 1.1 : 0.45 }));
+}
+
+export function playComplete() {
+  if (enabled) complete();
+}
 export function playPageTurn() {
   if (enabled) pageTurn();
 }

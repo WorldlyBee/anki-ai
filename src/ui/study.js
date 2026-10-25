@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify';
 import katexCss from 'katex/dist/katex.min.css?inline';
 import { db } from '../db.js';
-import { getSettings, todayLog, saveAnswer, undoAnswer, mediaUrl } from '../store.js';
+import { getSettings, todayLog, saveAnswer, undoAnswer, mediaUrl, getStreak } from '../store.js';
 import { buildQueues, pickNext, previewCard, formatInterval, makeFsrs, subtreeIds, dayStart, State, Rating } from '../scheduler.js';
 import { renderCard } from '../render.js';
 import { h, icon, toast, menu } from './dom.js';
@@ -9,7 +9,7 @@ import { ChatSheet } from './chat.js';
 import { navigate, onLeave } from '../router.js';
 import { isDarkTheme } from '../theme.js';
 import { quoteOfTheDay } from '../quotes.js';
-import { setSoundsEnabled, playPageTurn, playRated } from '../sounds.js';
+import { setSoundsEnabled, playPageTurn, playRated, playComplete } from '../sounds.js';
 
 const BASE_CARD_CSS = `
 :host { display: block; }
@@ -60,6 +60,9 @@ export async function renderStudy(app, deckId) {
   let lastId = null;
   let waitTimer = null;
   const undoStack = [];
+  // This session, for the "deck complete" screen
+  let sessionCards = 0;
+  let sessionStart = 0;
 
   // ---- layout ----
   const countsEl = h('span', { class: 'counts' });
@@ -160,12 +163,22 @@ export async function renderStudy(app, deckId) {
         : 'You have finished this deck for now.';
       shadow.innerHTML = `<style>${BASE_CARD_CSS}</style>`;
       const q = quoteOfTheDay();
-      cardScroll.replaceChildren(h('div', { class: 'done' },
+      const finished = sessionCards > 0 && !pick.waitUntil;
+      const streak = await getStreak(settings);
+      cardScroll.replaceChildren(h('div', { class: `done ${finished ? 'celebrate' : ''}` },
         h('img', { class: 'coin', src: 'icon-192.png', alt: '' }),
-        h('h2', {}, 'Congratulations!'),
-        h('p', {}, msg),
+        h('h2', {}, finished ? 'Deck complete!' : 'Congratulations!'),
+        finished ? h('p', {}, sessionSummary()) : h('p', {}, msg),
+        streak.current > 0 && h('div', { class: 'streak' },
+          h('div', { class: 'streak-count' }, `🔥 ${streak.current}-day streak`),
+          h('div', { class: 'streak-note' }, streakNote(streak)),
+        ),
         h('blockquote', { class: 'quote' }, h('p', {}, `“${q.text}”`), h('cite', {}, `Aristotle, ${q.source}`)),
       ));
+      if (finished) {
+        playComplete();
+        sessionCards = 0; // celebrate once per finish
+      }
       if (pick.waitUntil) {
         waitTimer = setTimeout(() => {
           cardScroll.replaceChildren(host);
@@ -218,6 +231,8 @@ export async function renderStudy(app, deckId) {
       duration: Math.min(now - shownAt, 120_000),
     };
     const logId = await saveAnswer(updated, entry);
+    if (!sessionCards) sessionStart = now;
+    sessionCards++;
     undoStack.push({ prev, logId });
     if (undoStack.length > 20) undoStack.shift();
     cards = cards.map((c) => (c.id === prev.id ? updated : c));
@@ -226,9 +241,21 @@ export async function renderStudy(app, deckId) {
     showNext();
   }
 
+  function sessionSummary() {
+    const mins = Math.max(1, Math.round((Date.now() - sessionStart) / 60_000));
+    return `${sessionCards} card${sessionCards === 1 ? '' : 's'} in ${mins} minute${mins === 1 ? '' : 's'}. Nicely done.`;
+  }
+
+  function streakNote({ current, best }) {
+    if (current === 1) return 'Day one. Come back tomorrow to keep it going.';
+    if (current >= best) return current === best && best > 1 ? 'Your longest streak yet.' : 'Keep it going.';
+    return `Your best is ${best} days.`;
+  }
+
   async function undo() {
     const last = undoStack.pop();
     if (!last) return;
+    sessionCards = Math.max(0, sessionCards - 1);
     await undoAnswer(last.prev, last.logId);
     cards = cards.map((c) => (c.id === last.prev.id ? last.prev : c));
     log = log.filter((l) => l.id !== last.logId);

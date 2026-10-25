@@ -160,8 +160,26 @@ const sse = (text) =>
   await page.screenshot({ path: `${out}/07-done.png` });
   console.log('done screen:', await page.$eval('.done', (d) => d.innerText.replace(/\s+/g, ' ')).catch(() => 'not reached'));
 
+  if (!(await page.$('.done.celebrate'))) throw new Error('no deck-complete celebration');
+  console.log('streak on finish:', await page.innerText('.streak'));
+
+  // Streaks count consecutive days: add reviews from the two previous days (but not 3 days ago)
+  await page.evaluate(() => new Promise((resolve) => {
+    const req = indexedDB.open('anki-ai');
+    req.onsuccess = () => {
+      const tx = req.result.transaction('reviews', 'readwrite');
+      const day = 86_400_000;
+      for (const back of [1, 2, 4]) {
+        const t = Date.now() - back * day;
+        tx.objectStore('reviews').put({ id: `${t}-1`, cid: 1, did: 1, time: t, rating: 3, prevState: 2, mod: t, dirty: 0 });
+      }
+      tx.oncomplete = resolve;
+    };
+  }));
   await page.goto('http://localhost:4173/#/');
   await page.waitForSelector('.deck-row');
+  console.log('deck list footer with history:', await page.innerText('.today'));
+  if (!/3-day streak/.test(await page.innerText('.today'))) throw new Error('streak count wrong');
   console.log('deck rows after:', await page.$$eval('.deck-row', (r) => r.map((x) => x.innerText.replace(/\s+/g, ' '))));
   console.log('today:', await page.innerText('.today'));
   console.log('errors:', errors.length ? errors : 'none');

@@ -1,5 +1,5 @@
 import { db, getKV, setKV } from '../db.js';
-import { getSettings, importFile, todayLog, deleteDeck, renameDeck } from '../store.js';
+import { getSettings, importFile, todayLog, deleteDeck, renameDeck, getStreak } from '../store.js';
 import { buildQueues } from '../scheduler.js';
 import { exportBackup } from '../backup.js';
 import { h, icon, toast, dialog, menu } from './dom.js';
@@ -75,7 +75,11 @@ export async function renderDecks(app) {
       ));
     }
     const studied = log.length;
-    list.append(h('div', { class: 'today' }, studied ? `Studied ${studied} card${studied === 1 ? '' : 's'} today` : 'No cards studied today yet'));
+    const streak = await getStreak(settings);
+    list.append(h('div', { class: 'today' },
+      studied ? `Studied ${studied} card${studied === 1 ? '' : 's'} today` : 'No cards studied today yet',
+      streak.current > 1 && h('span', { class: 'streak-inline' }, ` · 🔥 ${streak.current}-day streak`),
+    ));
   }
 
   // Sync status, and refresh when another device's changes come in
