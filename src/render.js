@@ -197,7 +197,7 @@ export function renderMath(html) {
 }
 
 const soundButtons = (html) =>
-  html.replace(/\[sound:([^\]]+)\]/g, (_, f) => `<button type="button" class="sound-btn" data-sound="${escapeHtml(f)}" aria-label="Play audio">▶</button>`);
+  html.replace(/\[sound:([^\]]+)\]/g, (_, f) => `<button type="button" class="sound-btn" data-sound="${escapeHtml(f)}" aria-label="Play audio"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg></button>`);
 
 // ---------- entry point ----------
 

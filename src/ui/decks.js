@@ -6,6 +6,7 @@ import { h, icon, toast, dialog, menu } from './dom.js';
 import { navigate, onLeave } from '../router.js';
 import { WEEKDAYS, describe as describeReminder, icsFile, googleCalendarLink } from '../reminders.js';
 import { getSyncStatus, onSyncStatus, getSyncConfig, backupToRepo } from '../sync/sync.js';
+import { connectOpenRouter } from '../openrouter.js';
 import { syncStatusText } from './syncSettings.js';
 
 export async function renderDecks(app) {
@@ -39,17 +40,29 @@ export async function renderDecks(app) {
   );
 
   const list = h('div', { class: 'scroll' });
+  const aiReady = { openrouter: settings.openrouterKey, anthropic: settings.anthropicKey, openai: settings.openaiKey }[settings.provider];
   if (!visible.length) {
     list.append(h('div', { class: 'empty' },
       h('img', { class: 'coin', src: 'icon-192.png', alt: '' }),
       h('h2', {}, 'Welcome to Aristotle'),
-      h('p', {}, 'Bring your cards over from AnkiDroid:'),
-      h('ol', {},
-        h('li', {}, 'In AnkiDroid, open the menu → Export collection.'),
-        h('li', {}, 'Choose "Collection package (.colpkg)" and keep "Include media" and "Include scheduling" on.'),
-        h('li', {}, 'Tap Import below and pick that file.'),
+      h('p', { class: 'lede' }, 'Spaced repetition, with a tutor one tap away.'),
+      h('ol', { class: 'steps' },
+        h('li', {},
+          h('h3', {}, 'Bring your decks'),
+          h('p', {}, 'In Anki or AnkiDroid, export your collection (.colpkg) or a deck (.apkg) with media and scheduling included. Then tap Import.'),
+          h('button', { class: 'btn primary', onclick: () => fileInput.click() }, 'Import a deck'),
+          h('p', { class: 'hint' }, 'No decks yet? Free shared decks: ', h('a', { href: 'https://ankiweb.net/shared/decks', target: '_blank', rel: 'noopener' }, 'ankiweb.net')),
+        ),
+        h('li', {},
+          h('h3', {}, 'Connect the AI tutor'),
+          aiReady
+            ? h('p', {}, 'Done. Tap the microphone on any card to ask Aristotle about it.')
+            : [
+                h('p', {}, 'One OpenRouter account covers answers and voice. Sign in, add a little prepaid credit, and you\'re set.'),
+                h('button', { class: 'btn', onclick: () => connectOpenRouter() }, 'Connect OpenRouter'),
+              ],
+        ),
       ),
-      h('p', {}, 'Single decks (.apkg) work too.'),
     ));
   } else {
     list.append(h('div', { class: 'deck-header' }, h('span', { style: { textAlign: 'left' } }, ''), h('span', {}, 'New'), h('span', {}, 'Learn'), h('span', {}, 'Due'), h('span')));
@@ -73,7 +86,7 @@ export async function renderDecks(app) {
       list.append(h('div', { class: 'deck-row' },
         h('div', { class: 'deck-name', style: { paddingLeft: `${(parts.length - 1) * 18}px` }, onclick: () => navigate(`#/study/${d.id}`) },
           toggle, h('span', { class: 'label' }, parts.at(-1)),
-          d.reminder && h('span', { class: 'bell', title: describeReminder(d.reminder), 'aria-label': `Reminder: ${describeReminder(d.reminder)}` }, '🔔'),
+          d.reminder && h('span', { class: 'bell', title: describeReminder(d.reminder), role: 'img', 'aria-label': `Reminder: ${describeReminder(d.reminder)}` }, icon('bell')),
         ),
         ...counts.map((n, i) => h('span', { class: `num ${['n', 'l', 'r'][i]} ${n ? '' : 'zero'}` }, n)),
         h('button', { class: 'icon-btn', 'aria-label': 'Deck options', html: icon('gear').outerHTML, onclick: () => deckOptions(app, d, settings) }),
@@ -83,7 +96,7 @@ export async function renderDecks(app) {
     const streak = await getStreak(settings);
     list.append(h('div', { class: 'today' },
       studied ? `Studied ${studied} card${studied === 1 ? '' : 's'} today` : 'No cards studied today yet',
-      streak.current > 1 && h('span', { class: 'streak-inline' }, ` · 🔥 ${streak.current}-day streak`),
+      streak.current > 1 && h('span', { class: 'streak-inline' }, ' · ', icon('flame', 'flame'), ` ${streak.current}-day streak`),
     ));
   }
 

@@ -1,4 +1,6 @@
 import 'katex/dist/katex.min.css';
+import '@fontsource/source-sans-3/400.css';
+import '@fontsource/source-sans-3/600.css';
 import '@fontsource/cormorant-garamond/600.css';
 import '@fontsource/cormorant-garamond/500-italic.css';
 import './style.css';

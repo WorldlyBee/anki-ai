@@ -134,8 +134,8 @@ export class ChatSheet {
           state === 'transcribing'
             ? 'Transcribing…'
             : Number(settings.autoSendSeconds) > 0
-              ? `Listening. Sends when you pause for ${settings.autoSendSeconds}s, or tap ➤ to send now.`
-              : 'Listening. Tap ➤ when you are done.';
+              ? `Listening. Sends when you pause for ${settings.autoSendSeconds}s, or tap send.`
+              : 'Listening. Tap send when you are done.';
         if (state === 'idle' && bubble && isPlaceholder(bubble)) {
           bubble.remove();
           bubble = null;

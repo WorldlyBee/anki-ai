@@ -21,7 +21,7 @@ img { max-width: 100%; height: auto; }
 .cloze { font-weight: bold; color: blue; }
 .nightMode .cloze { color: lightblue; }
 hr#answer { margin: 18px 0; border: 0; border-top: 1px solid rgba(127,127,127,.4); }
-.card.nightMode { color: #ececec; background-color: #1d1d1f; }
+.card.nightMode { color: #e9e6df; background-color: #161b25; }
 .nightMode a { color: #8ab4ff; }
 input.typeans { font: inherit; width: 100%; max-width: 420px; padding: 8px 10px; border-radius: 8px; border: 1px solid #999; margin-top: 12px; box-sizing: border-box; }
 .typeans-result { display: inline-block; margin: 8px 0; font-family: monospace; font-size: 0.95em; }
@@ -29,8 +29,10 @@ input.typeans { font: inherit; width: 100%; max-width: 420px; padding: 8px 10px;
 .typeans-result.correct .typed { background: rgba(46,157,79,.25); }
 .typeans-result.wrong .typed { background: rgba(216,74,60,.25); text-decoration: line-through; }
 .typeans-result .expected { padding: 2px 8px; margin-top: 4px; background: rgba(46,157,79,.25); border-radius: 4px; }
-.sound-btn { font-size: 16px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: #1e64c8; color: #fff; vertical-align: middle; margin: 2px; cursor: pointer; }
-details.hint summary { color: #1e64c8; cursor: pointer; }
+.sound-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #2a4f94; color: #fff; vertical-align: middle; margin: 2px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+details.hint summary { color: #2a4f94; cursor: pointer; }
+.nightMode .sound-btn { background: #3f67b0; }
+.nightMode details.hint summary { color: #8fb0ec; }
 `;
 
 export async function renderStudy(app, deckId) {
@@ -170,7 +172,7 @@ export async function renderStudy(app, deckId) {
         h('h2', {}, finished ? 'Deck complete!' : 'Congratulations!'),
         finished ? h('p', {}, sessionSummary()) : h('p', {}, msg),
         streak.current > 0 && h('div', { class: 'streak' },
-          h('div', { class: 'streak-count' }, `🔥 ${streak.current}-day streak`),
+          h('div', { class: 'streak-count' }, icon('flame', 'flame'), `${streak.current}-day streak`),
           h('div', { class: 'streak-note' }, streakNote(streak)),
         ),
         h('blockquote', { class: 'quote' }, h('p', {}, `“${q.text}”`), h('cite', {}, `Aristotle, ${q.source}`)),
