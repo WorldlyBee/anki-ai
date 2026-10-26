@@ -48,10 +48,16 @@ export async function renderDecks(app) {
       h('p', { class: 'lede' }, 'Spaced repetition, with a tutor one tap away.'),
       h('ol', { class: 'steps' },
         h('li', {},
-          h('h3', {}, 'Bring your decks'),
-          h('p', {}, 'In Anki or AnkiDroid, export your collection (.colpkg) or a deck (.apkg) with media and scheduling included. Then tap Import.'),
-          h('button', { class: 'btn primary', onclick: () => fileInput.click() }, 'Import a deck'),
-          h('p', { class: 'hint' }, 'No decks yet? Free shared decks: ', h('a', { href: 'https://ankiweb.net/shared/decks', target: '_blank', rel: 'noopener' }, 'ankiweb.net')),
+          h('h3', {}, 'Get some cards'),
+          h('p', {}, 'Search thousands of free decks made by other learners, on any subject.'),
+          deckSearch(),
+          h('p', { class: 'hint' }, 'Download a deck there, then come back and import it here.'),
+          h('div', { class: 'or' }, 'or'),
+          h('button', { class: 'btn', onclick: () => fileInput.click() }, 'Import a deck file'),
+          h('details', { class: 'from-anki' },
+            h('summary', {}, 'Already use Anki? Bring everything over'),
+            h('p', {}, 'Your decks, images and review history all come along. In Anki or AnkiDroid, choose Export → Collection package (.colpkg) with media and scheduling included, then tap "Import a deck file" and pick it.'),
+          ),
         ),
         h('li', {},
           h('h3', {}, 'Connect the AI tutor'),
@@ -116,8 +122,25 @@ export async function renderDecks(app) {
   });
   onLeave(off);
 
-  const fab = h('button', { class: 'fab', onclick: () => fileInput.click() }, '+ Import');
-  app.replaceChildren(top, list, fab, fileInput);
+  // The welcome screen has its own import button, so the floating one only shows once there are decks
+  const fab = visible.length && h('button', { class: 'fab', onclick: () => fileInput.click() }, '+ Import');
+  app.replaceChildren(...[top, list, fab, fileInput].filter(Boolean));
+}
+
+const DECK_SUGGESTIONS = ['Spanish', 'Japanese', 'Anatomy', 'World geography', 'SAT vocabulary', 'Pharmacology'];
+const searchShared = (q) => window.open(`https://ankiweb.net/shared/decks?search=${encodeURIComponent(q)}`, '_blank', 'noopener');
+
+/** Search box for AnkiWeb's shared deck library (opens results there; AnkiWeb can't be searched from other sites). */
+function deckSearch() {
+  const input = h('input', { type: 'search', placeholder: 'e.g. Spanish, anatomy, chess', 'aria-label': 'Search shared decks', enterkeyhint: 'search' });
+  const go = (e) => {
+    e?.preventDefault();
+    searchShared(input.value.trim() || '');
+  };
+  return h('div', {},
+    h('form', { class: 'deck-search', onsubmit: go }, input, h('button', { class: 'btn primary', type: 'submit' }, 'Search')),
+    h('div', { class: 'suggestions' }, DECK_SUGGESTIONS.map((q) => h('button', { type: 'button', class: 'suggestion', onclick: () => searchShared(q) }, q))),
+  );
 }
 
 async function runImport(app, file) {

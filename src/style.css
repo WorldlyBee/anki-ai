@@ -87,7 +87,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .counts .cur { text-decoration: underline; text-underline-offset: 3px; }
 
 /* ---------- deck list ---------- */
-.scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .deck-header, .deck-row {
   display: grid; grid-template-columns: 1fr 44px 44px 44px 46px; align-items: center;
   padding: 0 4px 0 8px;
@@ -322,3 +322,14 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .steps p { margin: 0 0 12px; color: var(--muted); }
 .steps .hint { font-size: 14px; margin: 10px 0 0; }
 .steps a { color: var(--link); }
+
+.deck-search { display: flex; gap: 8px; }
+.deck-search input { flex: 1; min-width: 0; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+.suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.suggestion { border: 1px solid var(--border); background: transparent; border-radius: 999px; padding: 6px 12px; min-height: 36px; font-size: 14px; color: var(--text); }
+.suggestion:active { background: var(--surface-2); }
+.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin: 16px 0 12px; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.from-anki { margin-top: 14px; }
+.from-anki summary { cursor: pointer; color: var(--link); font-weight: 600; font-size: 15px; padding: 6px 0; }
+.from-anki p { margin-top: 6px; }
