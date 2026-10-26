@@ -247,6 +247,7 @@ export class ChatSheet {
 function friendlyError(err) {
   const status = err?.status;
   if (status === 401) return 'Your API key was rejected. Check it in Settings.';
+  if (status === 402) return "You're out of AI credit. Add more in Settings → AI tutor → Add credit.";
   if (status === 404) return "That model name wasn't found. Pick another one in Settings.";
   if (status === 429) return "Rate limited or out of credit. Wait a moment, or check your API account's billing.";
   if (status === 529 || status === 503) return 'The AI service is overloaded right now. Try again in a moment.';

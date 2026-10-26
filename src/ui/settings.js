@@ -8,6 +8,7 @@ import { navigate } from '../router.js';
 import { applyTheme } from '../theme.js';
 import { syncSection, timeAgo } from './syncSettings.js';
 import { getSyncConfig, backupToRepo, listRepoBackups, restoreFromRepo, forgetPulledData, syncNow } from '../sync/sync.js';
+import { connectOpenRouter, keyInfo, accountCredits, OPENROUTER_MODELS, ADD_CREDITS_URL } from '../openrouter.js';
 
 const CLAUDE_MODELS = [
   ['claude-opus-5-5', 'Claude Opus 5.5 (smartest, ~2¢ per question)'],
@@ -58,7 +59,9 @@ export async function renderSettings(app) {
   const providerBox = h('div');
   let openaiModels = await getKV('openaiModels', []);
   const paintProvider = () => {
-    const isClaude = (s.provider = s.provider || 'anthropic') === 'anthropic';
+    s.provider = s.provider || 'openrouter';
+    if (s.provider === 'openrouter') return providerBox.replaceChildren(openRouterBox());
+    const isClaude = s.provider === 'anthropic';
     const loadBtn = h('button', {
       class: 'btn', type: 'button',
       onclick: async () => {
@@ -111,12 +114,51 @@ export async function renderSettings(app) {
       h('small', {}, 'Newest first. Smaller "mini" models are faster and cheaper.'),
     );
   };
+
+  const openRouterBox = () => {
+    if (!s.openrouterKey) {
+      return h('div', { class: 'connect' },
+        h('p', { class: 'note' }, 'One account for the AI tutor and voice. Sign in (Google works), add prepaid credit (even $5 lasts a long time), and you\'re set. No keys to copy.'),
+        h('button', { class: 'btn primary wide', onclick: () => connectOpenRouter() }, 'Connect OpenRouter'),
+        h('details', { class: 'setup' },
+          h('summary', {}, 'Already have an OpenRouter key?'),
+          text('openrouterKey', 'OpenRouter key', { type: 'password', placeholder: 'sk-or-…' }),
+          h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => paintProvider() }, 'Use this key')),
+        ),
+      );
+    }
+    const credit = h('p', { class: 'note' }, 'Checking credit…');
+    keyInfo(s.openrouterKey)
+      .then(async (k) => {
+        const left = k.remaining ?? (await accountCredits(s.openrouterKey));
+        credit.textContent = left == null ? 'Connected.' : `Connected. $${left.toFixed(2)} of credit left.`;
+      })
+      .catch((err) => (credit.textContent = err.status === 401 ? 'This key no longer works. Disconnect and connect again.' : 'Connected (couldn\'t check credit right now).'));
+    return h('div', {},
+      credit,
+      select('openrouterModel', 'Model', OPENROUTER_MODELS.some(([v]) => v === s.openrouterModel) ? OPENROUTER_MODELS : [...OPENROUTER_MODELS, [s.openrouterModel, s.openrouterModel]]),
+      h('div', { class: 'row-btns' },
+        h('a', { class: 'btn', href: ADD_CREDITS_URL, target: '_blank', rel: 'noopener' }, 'Add credit'),
+        h('button', {
+          class: 'btn',
+          onclick: async () => {
+            await save({ openrouterKey: '' });
+            paintProvider();
+            paintVoice();
+          },
+        }, 'Disconnect'),
+      ),
+    );
+  };
   paintProvider();
 
   // Whisper settings appear as soon as Whisper is picked (and follow provider changes)
   const voiceBox = h('div');
   const paintVoice = () => {
     if (s.voiceEngine !== 'whisper') return voiceBox.replaceChildren();
+    if (s.provider === 'openrouter') {
+      return voiceBox.replaceChildren(h('p', { class: 'note' }, 'Uses your OpenRouter account (GPT-4o mini transcription). Nothing else to set up.'));
+    }
     voiceBox.replaceChildren(
       s.provider === 'openai'
         ? h('p', { class: 'note' }, 'Whisper uses the OpenAI API key you entered above. Nothing else to set up.')
@@ -193,7 +235,7 @@ export async function renderSettings(app) {
       await syncSection(() => renderSettings(app)),
 
       h('h2', {}, 'AI tutor'),
-      select('provider', 'AI provider', [['anthropic', 'Claude (Anthropic)'], ['openai', 'ChatGPT (OpenAI)']], { onchange: (v) => ((s.provider = v), paintProvider(), paintVoice()) }),
+      select('provider', 'AI provider', [['openrouter', 'OpenRouter (easiest: one account)'], ['anthropic', 'Claude (own API key)'], ['openai', 'ChatGPT (own API key)']], { onchange: (v) => ((s.provider = v), paintProvider(), paintVoice()) }),
       providerBox,
       check('sendImages', 'Send card images to the AI'),
       tutorPromptEditor(),
@@ -201,7 +243,7 @@ export async function renderSettings(app) {
       h('h2', {}, 'Voice'),
       select('voiceEngine', 'Dictation', [
         ['browser', `Built-in speech recognition (free)${browserSpeechSupported ? '' : ' (not available in this browser)'}`],
-        ['whisper', 'OpenAI Whisper (more accurate)'],
+        ['whisper', 'Cloud transcription (more accurate)'],
       ], { hint: "Whisper waits until you've finished talking, so it never cuts you off mid-thought.", onchange: (v) => ((s.voiceEngine = v), paintVoice()) }),
       voiceBox,
       h('div', { class: 'inline' },

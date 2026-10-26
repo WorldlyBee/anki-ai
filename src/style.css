@@ -291,3 +291,7 @@ code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-
 .field input[type='time'] { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); }
 /* Keep toasts from covering dialog buttons */
 body:has(.overlay) #toast { top: calc(16px + env(safe-area-inset-top)); bottom: auto; }
+
+.btn.wide { width: 100%; padding: 14px; font-size: 16px; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.connect { margin: 8px 0; }

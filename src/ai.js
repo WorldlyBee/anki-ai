@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { mediaBlob } from './store.js';
 import { cardAsText, imageNames } from './render.js';
+import { streamOpenRouter, transcribeOpenRouter } from './openrouter.js';
 
 // The tutor's instructions. Draws on learning-science principles (retrieval practice, elaboration,
 // concrete examples, managing cognitive load, metacognition) and on ideas from Ethan & Lilach
@@ -85,6 +86,7 @@ export async function buildCardContext({ notetype, note, card, deckName, reveale
  * carries the card context. Calls onText(fullTextSoFar) as tokens arrive.
  */
 export async function streamReply({ settings, context, history, onText, signal }) {
+  if (settings.provider === 'openrouter') return streamOpenRouter({ settings, system: tutorPrompt(settings), context, history, onText, signal });
   if (settings.provider === 'openai') return streamOpenAI({ settings, context, history, onText, signal });
   return streamAnthropic({ settings, context, history, onText, signal });
 }
@@ -158,6 +160,7 @@ async function streamOpenAI({ settings, context, history, onText, signal }) {
 }
 
 export async function transcribeWithWhisper(blob, settings) {
+  if (settings.provider === 'openrouter' && settings.openrouterKey) return transcribeOpenRouter(blob, settings);
   if (!settings.openaiKey) throw new Error('Whisper dictation needs an OpenAI API key in Settings.');
   const client = new OpenAI({ apiKey: settings.openaiKey, dangerouslyAllowBrowser: true });
   const ext = blob.type.includes('mp4') ? 'mp4' : blob.type.includes('ogg') ? 'ogg' : 'webm';

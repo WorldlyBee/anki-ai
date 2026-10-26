@@ -6,7 +6,9 @@ import { convertAnkiCard, makeFsrs, defaultSettings, dayStart } from './schedule
 
 export const defaultAppSettings = {
   ...defaultSettings,
-  provider: 'anthropic',
+  provider: 'openrouter', // new installs: easiest setup (existing users keep their saved choice)
+  openrouterKey: '',
+  openrouterModel: 'anthropic/claude-opus-5.5',
   anthropicKey: '',
   anthropicModel: 'claude-opus-5-5',
   effort: 'low',

@@ -61,6 +61,7 @@ const sse = (text) =>
 
   // Settings: add an API key
   await page.goto('http://localhost:4173/#/settings');
+  await page.selectOption('label:has-text("AI provider") select', 'anthropic'); // new installs start on OpenRouter
   await page.fill('input[placeholder="sk-ant-…"]', 'sk-ant-test');
   await page.dispatchEvent('input[placeholder="sk-ant-…"]', 'change');
   await page.screenshot({ path: `${out}/02-settings.png`, fullPage: true });

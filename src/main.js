@@ -12,6 +12,8 @@ import { requestPersistence } from './db.js';
 import { applyTheme } from './theme.js';
 import { h, toast } from './ui/dom.js';
 import { startAutoSync, enableSync, parsePairing } from './sync/sync.js';
+import { finishOpenRouterConnect } from './openrouter.js';
+import { saveSettings } from './store.js';
 import { navigate } from './router.js';
 
 const app = document.getElementById('app');
@@ -53,6 +55,18 @@ async function pairDevice(payload) {
 (async () => {
   applyTheme((await getSettings()).theme);
   requestPersistence();
+  // Back from "Connect OpenRouter"?
+  try {
+    const key = await finishOpenRouterConnect();
+    if (key) {
+      await saveSettings({ openrouterKey: key, provider: 'openrouter' });
+      location.hash = '#/settings';
+      setTimeout(() => toast('OpenRouter connected. Aristotle is ready to tutor you.', 4000), 300);
+    }
+  } catch (err) {
+    location.hash = '#/settings';
+    setTimeout(() => toast(err.message, 6000), 300);
+  }
   startRouter(render);
   registerSW({ immediate: true });
   startAutoSync();
