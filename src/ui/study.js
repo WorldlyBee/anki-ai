@@ -6,6 +6,7 @@ import { buildQueues, pickNext, previewCard, formatInterval, makeFsrs, subtreeId
 import { renderCard } from '../render.js';
 import { h, icon, toast, menu } from './dom.js';
 import { ChatSheet } from './chat.js';
+import { openLightbox, onImageDoubleTap } from './lightbox.js';
 import { navigate, onLeave } from '../router.js';
 import { isDarkTheme } from '../theme.js';
 import { quoteOfTheDay } from '../quotes.js';
@@ -17,7 +18,7 @@ const BASE_CARD_CSS = `
   font-family: arial; font-size: 20px; line-height: 1.5; text-align: center; color: black; background-color: white;
   padding: 20px 16px 160px; min-height: 100%; box-sizing: border-box; overflow-wrap: anywhere;
 }
-img { max-width: 100%; height: auto; }
+img { max-width: 100%; height: auto; cursor: zoom-in; }
 .cloze { font-weight: bold; color: blue; }
 .nightMode .cloze { color: lightblue; }
 hr#answer { margin: 18px 0; border: 0; border-top: 1px solid rgba(127,127,127,.4); }
@@ -83,6 +84,8 @@ export async function renderStudy(app, deckId) {
   const syncUndo = () => (undoBtn.disabled = !undoStack.length);
   const host = h('div', { class: 'card-host' });
   const shadow = host.attachShadow({ mode: 'open' });
+  // Double-tap a picture on the card to see it full screen
+  onImageDoubleTap(shadow, (img) => openLightbox(img.src, img.alt));
   const cardScroll = h('div', { class: 'card-scroll' }, host);
   const bar = h('div', { class: 'answer-bar' });
   const askBtn = h('button', { class: 'ask-fab', 'aria-label': 'Ask the AI about this card', html: icon('mic').outerHTML });
