@@ -91,12 +91,12 @@ const BASE = process.env.BASE || 'http://localhost:4173/';
 
   // 6. Hide it: a mic appears in the top bar instead
   await page.click('.topbar .icon-btn[aria-label=More]');
-  await page.click('.popup-menu >> text=Hide mic button');
+  await page.click('.popup-menu >> text=Hide Aristotle button');
   await page.waitForTimeout(300);
   console.log('hidden → floating mic visible:', await page.isVisible('.ask-fab'), '| top-bar mic:', await page.isVisible('.topbar .icon-btn[aria-label="Ask Aristotle"]'));
   assert.equal(await page.isVisible('.ask-fab'), false);
   await page.click('.topbar .icon-btn[aria-label=More]');
-  await page.click('.popup-menu >> text=Show mic button');
+  await page.click('.popup-menu >> text=Show Aristotle button');
   await page.waitForTimeout(300);
   assert.equal(await page.isVisible('.ask-fab'), true);
 

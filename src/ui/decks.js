@@ -43,7 +43,7 @@ export async function renderDecks(app) {
   const aiReady = { openrouter: settings.openrouterKey, anthropic: settings.anthropicKey, openai: settings.openaiKey }[settings.provider];
   if (!visible.length) {
     list.append(h('div', { class: 'empty' },
-      h('img', { class: 'coin', src: 'icon-192.png', alt: '' }),
+      h('img', { class: 'coin', src: 'coin.svg', alt: '' }),
       h('h2', {}, 'Welcome to Aristotle'),
       h('p', { class: 'lede' }, 'Spaced repetition, with a tutor one tap away.'),
       h('ol', { class: 'steps' },

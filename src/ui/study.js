@@ -11,6 +11,8 @@ import { navigate, onLeave } from '../router.js';
 import { isDarkTheme } from '../theme.js';
 import { quoteOfTheDay } from '../quotes.js';
 import { setSoundsEnabled, playPageTurn, playRated, playComplete } from '../sounds.js';
+import coinUrl from '../assets/coin.svg';
+import coinTalkUrl from '../assets/coin-talk.svg';
 
 const BASE_CARD_CSS = `
 :host { display: block; }
@@ -22,7 +24,7 @@ img { max-width: 100%; height: auto; cursor: zoom-in; }
 .cloze { font-weight: bold; color: blue; }
 .nightMode .cloze { color: lightblue; }
 hr#answer { margin: 18px 0; border: 0; border-top: 1px solid rgba(127,127,127,.4); }
-.card.nightMode { color: #e9e6df; background-color: #161b25; }
+.card.nightMode { color: #efe6da; background-color: #1d1714; }
 .nightMode a { color: #8ab4ff; }
 input.typeans { font: inherit; width: 100%; max-width: 420px; padding: 8px 10px; border-radius: 8px; border: 1px solid #999; margin-top: 12px; box-sizing: border-box; }
 .typeans-result { display: inline-block; margin: 8px 0; font-family: monospace; font-size: 0.95em; }
@@ -30,10 +32,10 @@ input.typeans { font: inherit; width: 100%; max-width: 420px; padding: 8px 10px;
 .typeans-result.correct .typed { background: rgba(46,157,79,.25); }
 .typeans-result.wrong .typed { background: rgba(216,74,60,.25); text-decoration: line-through; }
 .typeans-result .expected { padding: 2px 8px; margin-top: 4px; background: rgba(46,157,79,.25); border-radius: 4px; }
-.sound-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #2a4f94; color: #fff; vertical-align: middle; margin: 2px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-details.hint summary { color: #2a4f94; cursor: pointer; }
-.nightMode .sound-btn { background: #3f67b0; }
-.nightMode details.hint summary { color: #8fb0ec; }
+.sound-btn { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #a9502a; color: #fff; vertical-align: middle; margin: 2px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+details.hint summary { color: #9a4824; cursor: pointer; }
+.nightMode .sound-btn { background: #b85b31; }
+.nightMode details.hint summary { color: #eba27c; }
 `;
 
 export async function renderStudy(app, deckId) {
@@ -71,8 +73,8 @@ export async function renderStudy(app, deckId) {
   const countsEl = h('span', { class: 'counts' });
   const menuBtn = h('button', { class: 'icon-btn', 'aria-label': 'More', html: icon('more').outerHTML });
   const undoBtn = h('button', { class: 'icon-btn', 'aria-label': 'Undo last answer', title: 'Undo last answer', disabled: true, html: icon('undo').outerHTML, onclick: () => undo() });
-  // Shown in the top bar only when the floating mic is hidden, so asking is always one tap away
-  const topMicBtn = h('button', { class: 'icon-btn', 'aria-label': 'Ask Aristotle', hidden: true, html: icon('mic').outerHTML, onclick: () => current && chat.open({ listen: true }) });
+  // Shown in the top bar only when the floating coin is hidden, so asking is always one tap away
+  const topMicBtn = h('button', { class: 'icon-btn top-coin', 'aria-label': 'Ask Aristotle', hidden: true, html: `<img src="${coinUrl}" alt="">`, onclick: () => current && chat.open({ listen: true }) });
   const top = h('header', { class: 'topbar' },
     h('button', { class: 'icon-btn', 'aria-label': 'Back', html: icon('back').outerHTML, onclick: () => navigate('#/') }),
     h('h1', {}, deck.name.split('::').at(-1)),
@@ -88,7 +90,8 @@ export async function renderStudy(app, deckId) {
   onImageDoubleTap(shadow, (img) => openLightbox(img.src, img.alt));
   const cardScroll = h('div', { class: 'card-scroll' }, host);
   const bar = h('div', { class: 'answer-bar' });
-  const askBtn = h('button', { class: 'ask-fab', 'aria-label': 'Ask the AI about this card', html: icon('mic').outerHTML });
+  // Aristotle's coin, drawn as a speech bubble: tap to talk to him about this card
+  const askBtn = h('button', { class: 'ask-fab', 'aria-label': 'Ask Aristotle about this card', html: `<img src="${coinTalkUrl}" alt="" draggable="false">` });
   const study = h('main', { class: 'study' }, cardScroll, askBtn, bar);
   app.replaceChildren(top, study);
 
@@ -165,7 +168,7 @@ export async function renderStudy(app, deckId) {
       { label: 'Undo last answer', disabled: !undoStack.length, action: undo },
       { label: 'Ask Aristotle (typing)', disabled: !current, action: () => chat.open() },
       {
-        label: micHidden ? 'Show mic button' : 'Hide mic button',
+        label: micHidden ? 'Show Aristotle button' : 'Hide Aristotle button',
         action: async () => {
           micHidden = !micHidden;
           await saveSettings({ hideAskButton: micHidden });
@@ -244,7 +247,7 @@ export async function renderStudy(app, deckId) {
       const finished = sessionCards > 0 && !pick.waitUntil;
       const streak = await getStreak(settings);
       cardScroll.replaceChildren(h('div', { class: `done ${finished ? 'celebrate' : ''}` },
-        h('img', { class: 'coin', src: 'icon-192.png', alt: '' }),
+        h('img', { class: 'coin', src: 'coin.svg', alt: '' }),
         h('h2', {}, finished ? 'Deck complete!' : 'Congratulations!'),
         finished ? h('p', {}, sessionSummary()) : h('p', {}, msg),
         streak.current > 0 && h('div', { class: 'streak' },

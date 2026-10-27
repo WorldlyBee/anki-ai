@@ -1,48 +1,48 @@
-/* Palette: warm marble and navy ink, with the coin's gold as the one accent.
-   Neutrals are tinted toward the palette rather than pure greys. */
+/* Palette: Greek pottery. Black glaze for the chrome, terracotta for the things you tap,
+   cream for the page. Neutrals are tinted warm rather than pure greys. */
 :root {
-  --bg: #f6f4ef;
-  --surface: #fffdf9;
-  --surface-2: #eeebe3;
-  --text: #1a2030;
-  --muted: #5f6676;
-  --border: #e1ddd2;
-  --bar: #1d3566;
-  --bar-text: #fbf8f1;
-  --accent: #2a4f94;
-  --gold: #b8934a;
-  --link: #2a4f94;
+  --bg: #f5efe7;
+  --surface: #fffaf4;
+  --surface-2: #ece3d7;
+  --text: #1b1512;
+  --muted: #6f6157;
+  --border: #e3d6c6;
+  --bar: #1b1512;
+  --bar-text: #f3e7d8;
+  --accent: #a9502a;
+  --clay: #c4633a;
+  --link: #9a4824;
   --serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   --sans: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --new: #1e6bd6;
   --learn: #c8352a;
   --due: #19793a;
   --again: #c9473b;
-  --hard: #626b7b;
+  --hard: #6b5f56;
   --good: #2b8f4a;
   --easy: #2c72d0;
-  --bubble-user: #2a4f94;
-  --bubble-user-text: #fbf8f1;
-  --bubble-ai: #eeebe3;
-  --shadow: 0 6px 24px rgba(20, 30, 54, 0.14);
+  --bubble-user: #a9502a;
+  --bubble-user-text: #fffaf4;
+  --bubble-ai: #ece3d7;
+  --shadow: 0 6px 24px rgba(27, 21, 18, 0.16);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #0f131b; --surface: #161b25; --surface-2: #212836; --text: #e9e6df; --muted: #9aa1ad;
-    --border: #2a3140; --bar: #141b2c; --bar-text: #e9e6df; --accent: #3f67b0; --link: #8fb0ec; --gold: #d4b46a;
+    --bg: #14100e; --surface: #1d1714; --surface-2: #2a221d; --text: #efe6da; --muted: #a8998b;
+    --border: #352b25; --bar: #0d0a08; --bar-text: #efe6da; --accent: #b85b31; --link: #eba27c; --clay: #d97a48;
     --new: #6ea8ff; --learn: #ff7a6e; --due: #5fd17f;
-    --again: #b0453a; --hard: #4f5869; --good: #2b8447; --easy: #2f6abd;
-    --bubble-user: #34548f; --bubble-ai: #212836; --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    --again: #b0453a; --hard: #574c44; --good: #2b8447; --easy: #2f6abd;
+    --bubble-user: #9c4a26; --bubble-ai: #2a221d; --shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #0f131b; --surface: #161b25; --surface-2: #212836; --text: #e9e6df; --muted: #9aa1ad;
-  --border: #2a3140; --bar: #141b2c; --bar-text: #e9e6df; --accent: #3f67b0; --link: #8fb0ec; --gold: #d4b46a;
+  --bg: #14100e; --surface: #1d1714; --surface-2: #2a221d; --text: #efe6da; --muted: #a8998b;
+  --border: #352b25; --bar: #0d0a08; --bar-text: #efe6da; --accent: #b85b31; --link: #eba27c; --clay: #d97a48;
   --new: #6ea8ff; --learn: #ff7a6e; --due: #5fd17f;
-  --again: #b0453a; --hard: #4f5869; --good: #2b8447; --easy: #2f6abd;
-  --bubble-user: #34548f; --bubble-ai: #212836; --shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  --again: #b0453a; --hard: #574c44; --good: #2b8447; --easy: #2f6abd;
+  --bubble-user: #9c4a26; --bubble-ai: #2a221d; --shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
   color-scheme: dark;
 }
 
@@ -60,9 +60,9 @@ body {
   overscroll-behavior: none;
 }
 #app { height: 100dvh; display: flex; flex-direction: column; }
-::selection { background: color-mix(in srgb, var(--gold) 34%, transparent); }
+::selection { background: color-mix(in srgb, var(--clay) 34%, transparent); }
 :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 6px; }
-.topbar :focus-visible { outline-color: var(--gold); }
+.topbar :focus-visible { outline-color: var(--clay); }
 button { font: inherit; color: inherit; cursor: pointer; }
 input, select, textarea { font: inherit; color: inherit; }
 
@@ -186,11 +186,12 @@ input, select, textarea { font: inherit; color: inherit; }
 .ease:active, .answer-bar .show:active { filter: brightness(0.9); }
 
 .ask-fab {
-  position: absolute; right: 14px; bottom: 84px; width: 60px; height: 60px; border-radius: 50%; border: 0;
-  background: var(--accent); color: #fff; box-shadow: var(--shadow); z-index: 4;
-  display: flex; align-items: center; justify-content: center;
+  position: absolute; right: 12px; bottom: 82px; width: 66px; height: 66px; border: 0; padding: 0;
+  background: none; z-index: 4; display: flex; align-items: center; justify-content: center;
+  filter: drop-shadow(0 4px 8px rgba(27, 21, 18, 0.3));
 }
-.ask-fab .icon { width: 28px; height: 28px; }
+.ask-fab img { width: 100%; height: 100%; pointer-events: none; }
+.top-coin img { width: 30px; height: 30px; }
 .ask-fab .badge {
   position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%;
   background: var(--learn); border: 2px solid var(--surface);
@@ -216,7 +217,12 @@ input, select, textarea { font: inherit; color: inherit; }
 .msg { max-width: 88%; padding: 10px 13px; border-radius: 16px; overflow-wrap: anywhere; }
 .msg.user { align-self: flex-end; background: var(--bubble-user); color: var(--bubble-user-text); border-bottom-right-radius: 4px; }
 .msg.user.pending { opacity: 0.7; font-style: italic; }
-.msg.ai { align-self: flex-start; background: var(--bubble-ai); border-bottom-left-radius: 4px; }
+.msg.ai { align-self: flex-start; background: var(--bubble-ai); border-top-left-radius: 4px; position: relative; margin-left: 38px; max-width: calc(88% - 38px); }
+/* Aristotle's coin beside everything he says */
+.msg.ai::before {
+  content: ''; position: absolute; left: -38px; top: 0; width: 30px; height: 30px;
+  background: url('./assets/coin.svg') center / contain no-repeat;
+}
 .msg.ai p { margin: 0 0 8px; } .msg.ai p:last-child { margin-bottom: 0; }
 .msg.ai ul, .msg.ai ol { margin: 4px 0 8px; padding-left: 20px; }
 .msg.ai pre { overflow-x: auto; background: rgba(127, 127, 127, 0.12); padding: 8px; border-radius: 8px; }
@@ -264,11 +270,11 @@ code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-
 .qr svg { display: block; width: 100%; height: auto; }
 
 /* ---------- Aristotle touches ---------- */
-.topbar.brand { box-shadow: inset 0 -2px 0 var(--gold), 0 1px 3px rgba(0, 0, 0, 0.2); }
+.topbar.brand { box-shadow: inset 0 -2px 0 var(--clay), 0 1px 3px rgba(0, 0, 0, 0.2); }
 .brand-mark { display: flex; align-items: center; gap: 10px; flex: 1; margin-left: 10px; min-width: 0; }
 .brand-mark img { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; }
 .brand-mark span { font-family: var(--serif); font-weight: 600; font-size: 27px; letter-spacing: 0.02em; line-height: 1; }
-.empty .coin, .done .coin { width: 76px; height: 76px; border-radius: 18px; box-shadow: var(--shadow); }
+.empty .coin, .done .coin { width: 84px; height: 84px; border-radius: 50%; box-shadow: var(--shadow); }
 .empty h2, .done h2 { font-family: var(--serif); font-weight: 600; font-size: 30px; letter-spacing: 0.01em; }
 .quote { max-width: 420px; margin: 28px auto 0; padding-top: 18px; border-top: 1px solid var(--border); }
 .quote p { font-family: var(--serif); font-style: italic; font-size: 21px; line-height: 1.35; color: var(--text); margin: 0 0 8px; }
@@ -316,7 +322,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .steps > li { counter-increment: step; position: relative; padding: 0 0 26px 46px; }
 .steps > li::before {
   content: counter(step); position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 50%;
-  border: 1.5px solid var(--gold); color: var(--text); font: 600 17px/27px var(--serif); text-align: center; font-variant-numeric: lining-nums;
+  border: 1.5px solid var(--clay); color: var(--text); font: 600 17px/27px var(--serif); text-align: center; font-variant-numeric: lining-nums;
 }
 .steps h3 { margin: 2px 0 4px; font-size: 17px; font-weight: 600; }
 .steps p { margin: 0 0 12px; color: var(--muted); }
@@ -335,8 +341,8 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .from-anki p { margin-top: 6px; }
 
 /* mic button: draggable, hideable */
-.ask-fab { touch-action: none; transition: box-shadow 0.15s, transform 0.15s; }
-.ask-fab.dragging { transform: scale(1.08); box-shadow: 0 10px 30px rgba(20, 30, 54, 0.35); cursor: grabbing; }
+.ask-fab { touch-action: none; transition: filter 0.15s, transform 0.15s; }
+.ask-fab.dragging { transform: scale(1.08); filter: drop-shadow(0 10px 18px rgba(27, 21, 18, 0.4)); cursor: grabbing; }
 .ask-fab.user-hidden { display: none; }
 .topbar .icon-btn:disabled { opacity: 0.35; }
 
