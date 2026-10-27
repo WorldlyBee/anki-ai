@@ -34,24 +34,33 @@ export class ChatSheet {
     this.micBtn = h('button', { class: 'round primary', 'aria-label': 'Speak', html: icons.mic, onclick: () => this.toggleListening() });
     this.sendBtn = h('button', { class: 'round', 'aria-label': 'Send', html: icons.send, onclick: () => this.sendTyped() });
     this.hint = h('div', { class: 'listen-hint', hidden: true });
-    this.el = h('section', { class: 'sheet', 'aria-label': 'Ask the AI' },
-      h('div', { class: 'sheet-head' },
-        h('div', { class: 'grip' }),
-        h('h3', {}, 'Ask Aristotle'),
-        h('button', { class: 'icon-btn', 'aria-label': 'Expand', html: icons.chevron, style: { transform: 'rotate(-90deg)' }, onclick: () => this.el.classList.toggle('tall') }),
-        h('button', { class: 'icon-btn', 'aria-label': 'Minimise', html: icons.down, onclick: () => this.close() }),
-      ),
+    this.expandBtn = h('button', { class: 'icon-btn', 'aria-label': 'Full screen', html: icons.chevron, style: { transform: 'rotate(-90deg)' }, onclick: () => this.setFull(true) });
+    this.minBtn = h('button', { class: 'icon-btn', 'aria-label': 'Minimise', html: icons.down, onclick: () => this.close() });
+    this.backBtn = h('button', { class: 'back-to-card', hidden: true, onclick: () => this.close() }, icon('down'), 'Back to card');
+    this.head = h('div', { class: 'sheet-head' },
+      h('div', { class: 'grip' }),
+      h('h3', {}, 'Ask Aristotle'),
+      this.expandBtn,
+      this.minBtn,
+      this.backBtn,
+    );
+    this.el = h('section', { class: 'sheet', 'aria-label': 'Ask Aristotle' },
+      this.head,
       this.messages,
       this.hint,
       h('div', { class: 'composer' }, this.input, this.micBtn, this.sendBtn),
     );
     parent.append(this.el);
+    this.setupGestures();
     this.onPop = () => this.isOpen && this.close({ fromBack: true });
     window.addEventListener('popstate', this.onPop);
   }
 
   get isOpen() {
     return this.el.classList.contains('open');
+  }
+  get isFull() {
+    return this.el.classList.contains('full');
   }
   get hasConversation() {
     return this.history.length > 0;
@@ -94,10 +103,76 @@ export class ChatSheet {
   close({ fromBack = false } = {}) {
     const wasOpen = this.isOpen;
     this.cancelListening();
-    this.el.classList.remove('open', 'tall');
+    this.setFull(false);
+    this.el.classList.remove('open');
     this.onChange();
     if (wasOpen && this.pushedHistory && !fromBack) history.back();
     this.pushedHistory = false;
+  }
+
+  /** Full screen for a longer conversation; half height for a quick question. */
+  setFull(on) {
+    this.el.classList.toggle('full', on);
+    this.expandBtn.hidden = on;
+    this.minBtn.hidden = on;
+    this.backBtn.hidden = !on;
+  }
+
+  /**
+   * Drag the header to resize: up for full screen, down to shrink or close; a tap on it toggles.
+   * Swiping up in the messages also goes full screen, and pulling down from the top shrinks it again.
+   */
+  setupGestures() {
+    let drag = null;
+    this.head.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      drag = { y: e.clientY, height: this.el.offsetHeight, max: this.el.parentElement.clientHeight, moved: false };
+      this.head.setPointerCapture(e.pointerId);
+    });
+    this.head.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const dy = e.clientY - drag.y;
+      if (!drag.moved && Math.abs(dy) < 8) return;
+      drag.moved = true;
+      this.el.style.transition = 'none';
+      this.el.style.height = `${Math.min(drag.max, Math.max(120, drag.height - dy))}px`;
+    });
+    const end = (e) => {
+      if (!drag) return;
+      const { y, height, max, moved } = drag;
+      drag = null;
+      const dy = e.clientY - y;
+      this.el.style.transition = '';
+      this.el.style.height = '';
+      if (!moved) return this.setFull(!this.isFull);
+      if (dy < -40) this.setFull(true);
+      else if (dy > 40) {
+        if (this.isFull && height - dy > max * 0.4) this.setFull(false);
+        else this.close();
+      }
+    };
+    this.head.addEventListener('pointerup', end);
+    this.head.addEventListener('pointercancel', end);
+
+    let swipe = null;
+    this.messages.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      swipe = e.touches.length === 1 ? { x: t.clientX, y: t.clientY, atTop: this.messages.scrollTop <= 0 } : null;
+    }, { passive: true });
+    this.messages.addEventListener('touchmove', (e) => {
+      if (!swipe) return;
+      const t = e.touches[0];
+      const dx = t.clientX - swipe.x;
+      const dy = t.clientY - swipe.y;
+      if (Math.abs(dx) > Math.abs(dy)) return;
+      if (!this.isFull && dy < -50) {
+        this.setFull(true);
+        swipe = null;
+      } else if (this.isFull && swipe.atTop && dy > 80) {
+        this.setFull(false);
+        swipe = null;
+      }
+    }, { passive: true });
   }
 
   /** Errors before any conversation: say it briefly and get out of the way. */

@@ -208,8 +208,15 @@ input, select, textarea { font: inherit; color: inherit; }
   display: flex; flex-direction: column; z-index: 10; transform: translateY(105%);
   visibility: hidden; transition: transform 0.22s ease, visibility 0s 0.22s;
 }
-.sheet.open { transform: none; visibility: visible; transition: transform 0.22s ease; }
-.sheet.tall { height: 92%; }
+.sheet.open { transform: none; visibility: visible; transition: transform 0.22s ease, height 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.28s; }
+.sheet.full { height: 100%; border-radius: 0; box-shadow: none; }
+.sheet-head { touch-action: none; cursor: grab; }
+.back-to-card {
+  display: inline-flex; align-items: center; gap: 4px; margin: 6px 8px 2px 0; padding: 6px 14px 6px 8px;
+  border: 0; border-radius: 999px; background: var(--surface-2); color: var(--text); font-weight: 600; font-size: 15px;
+}
+.back-to-card .icon { width: 20px; height: 20px; }
+.back-to-card:active { filter: brightness(0.95); }
 .sheet-head { display: flex; align-items: center; padding: 4px 4px 0 14px; flex-shrink: 0; }
 .sheet-head .grip { position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; border-radius: 2px; background: var(--border); transform: translateX(-50%); }
 .sheet-head h3 { flex: 1; margin: 10px 0 6px; font-size: 15px; font-weight: 600; color: var(--muted); }
@@ -270,7 +277,8 @@ code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-
 .qr svg { display: block; width: 100%; height: auto; }
 
 /* ---------- Aristotle touches ---------- */
-.topbar.brand { box-shadow: inset 0 -2px 0 var(--clay), 0 1px 3px rgba(0, 0, 0, 0.2); }
+/* The terracotta rule under every top bar carries the identity into the decks */
+.topbar { box-shadow: inset 0 -2px 0 var(--clay), 0 1px 3px rgba(0, 0, 0, 0.2); }
 .brand-mark { display: flex; align-items: center; gap: 10px; flex: 1; margin-left: 10px; min-width: 0; }
 .brand-mark img { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; }
 .brand-mark span { font-family: var(--serif); font-weight: 600; font-size: 27px; letter-spacing: 0.02em; line-height: 1; }
