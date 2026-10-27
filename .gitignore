@@ -2,3 +2,7 @@ node_modules
 dist
 test/screens
 .DS_Store
+
+# Android signing key: never commit
+*.keystore
+*.jks

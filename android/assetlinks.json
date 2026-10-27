@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.worldlybee.aristotle",
+        "sha256_cert_fingerprints": ["CA:71:BF:26:14:B4:A8:69:5F:85:A0:45:74:98:1E:2A:6F:71:53:20:95:D2:A1:EF:6C:13:0C:FD:B1:56:F2:01"]
+      }
+    }]

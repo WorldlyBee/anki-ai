@@ -1,0 +1,51 @@
+{
+  "packageId": "io.github.worldlybee.aristotle",
+  "host": "worldlybee.github.io",
+  "name": "Aristotle",
+  "launcherName": "Aristotle",
+  "display": "standalone",
+  "themeColor": "#1D3566",
+  "themeColorDark": "#141B2C",
+  "navigationColor": "#1D3566",
+  "navigationColorDark": "#141B2C",
+  "navigationDividerColor": "#1D3566",
+  "navigationDividerColorDark": "#141B2C",
+  "backgroundColor": "#1D3566",
+  "enableNotifications": true,
+  "startUrl": "/aristotle/",
+  "iconUrl": "https://worldlybee.github.io/aristotle/icon-512.png",
+  "maskableIconUrl": "https://worldlybee.github.io/aristotle/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "aristotle"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://worldlybee.github.io/aristotle/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://worldlybee.github.io/aristotle/",
+  "minSdkVersion": 24,
+  "orientation": "portrait",
+  "fingerprints": [
+    {
+      "name": "Aristotle upload key",
+      "value": "CA:71:BF:26:14:B4:A8:69:5F:85:A0:45:74:98:1E:2A:6F:71:53:20:95:D2:A1:EF:6C:13:0C:FD:B1:56:F2:01"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}
