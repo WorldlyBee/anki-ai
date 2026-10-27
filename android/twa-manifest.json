@@ -4,13 +4,13 @@
   "name": "Aristotle",
   "launcherName": "Aristotle",
   "display": "standalone",
-  "themeColor": "#1D3566",
-  "themeColorDark": "#141B2C",
-  "navigationColor": "#1D3566",
-  "navigationColorDark": "#141B2C",
-  "navigationDividerColor": "#1D3566",
-  "navigationDividerColorDark": "#141B2C",
-  "backgroundColor": "#1D3566",
+  "themeColor": "#1B1512",
+  "themeColorDark": "#0D0A08",
+  "navigationColor": "#1B1512",
+  "navigationColorDark": "#0D0A08",
+  "navigationDividerColor": "#1B1512",
+  "navigationDividerColorDark": "#0D0A08",
+  "backgroundColor": "#1B1512",
   "enableNotifications": true,
   "startUrl": "/aristotle/",
   "iconUrl": "https://worldlybee.github.io/aristotle/icon-512.png",
@@ -20,8 +20,8 @@
     "path": "./android.keystore",
     "alias": "aristotle"
   },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
+  "appVersionName": "1.1.0",
+  "appVersionCode": 2,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://worldlybee.github.io/aristotle/manifest.webmanifest",
@@ -47,5 +47,5 @@
   "protocolHandlers": [],
   "fileHandlers": [],
   "displayOverride": [],
-  "appVersion": "1.0.0"
+  "appVersion": "1.1.0"
 }
