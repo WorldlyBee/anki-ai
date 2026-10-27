@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-<defs><clipPath id="face"><circle cx="64" cy="54" r="43"/></clipPath></defs>
-<g stroke="#d0703f" stroke-width="8" stroke-linejoin="round"><circle cx="64" cy="54" r="49"/><path d="M 31 84 L 7 114 L 54 101 Z"/></g>
-<g fill="#1b1512" stroke="#1b1512" stroke-width="0.5"><circle cx="64" cy="54" r="49"/><path d="M 31 84 L 7 114 L 54 101 Z" stroke-linejoin="round"/></g>
-<g clip-path="url(#face)"><g transform="translate(62 64) scale(0.26) translate(-262 -300)"><path d="M 196 304 C 172 262 170 196 204 158 C 236 122 296 114 326 142 C 340 156 346 176 344 192 L 350 204 C 352 212 356 222 362 232 L 384 262 C 387 267 384 271 378 271 L 362 272 C 366 280 364 286 358 289 C 372 296 372 308 362 314 C 374 322 372 336 360 340 C 368 352 360 366 346 366 C 348 380 334 390 320 384 C 314 398 294 400 286 388 L 296 404 C 334 412 372 430 392 470 L 120 470 C 140 430 186 410 248 402 L 254 376 C 240 378 230 366 234 352 C 222 346 222 330 232 324 L 244 334 C 226 330 206 320 196 304 Z" fill="#d0703f"/></g></g></svg>
+<defs><clipPath id="face"><circle cx="62" cy="56" r="46"/></clipPath></defs>
+<g stroke="#d0703f" stroke-width="5" stroke-linejoin="round"><circle cx="62" cy="56" r="52"/><path d="M30 82 L12 112 L56 98 Z"/></g>
+<g fill="#1b1512"><circle cx="62" cy="56" r="52"/><path d="M30 82 L12 112 L56 98 Z"/></g>
+<g clip-path="url(#face)"><g transform="translate(60 66) scale(0.27) translate(-262 -300)"><path d="M 196 304 C 172 262 170 196 204 158 C 236 122 296 114 326 142 C 340 156 346 176 344 192 L 350 204 C 352 212 356 222 362 232 L 384 262 C 387 267 384 271 378 271 L 362 272 C 366 280 364 286 358 289 C 372 296 372 308 362 314 C 374 322 372 336 360 340 C 368 352 360 366 346 366 C 348 380 334 390 320 384 C 314 398 294 400 286 388 L 296 404 C 334 412 372 430 392 470 L 120 470 C 140 430 186 410 248 402 L 254 376 C 240 378 230 366 234 352 C 222 346 222 330 232 324 L 244 334 C 226 330 206 320 196 304 Z" fill="#d0703f"/></g></g>
+<circle cx="62" cy="56" r="46" fill="none" stroke="#d0703f" stroke-width="3.5"/></svg>

@@ -24,14 +24,15 @@ const coin = ({ detail = false } = {}) => `<svg xmlns="http://www.w3.org/2000/sv
 <g clip-path="url(#face)"><g transform="translate(58 70) scale(0.29) translate(-262 -300)"><path d="${BUST}" fill="${FIGURE}"/>${detail ? `<path d="${LINES}" fill="none" stroke="${GLAZE}" stroke-width="11" stroke-linecap="round"/>` : ''}</g></g>
 <circle cx="60" cy="60" r="50" fill="none" stroke="${FIGURE}" stroke-width="3"/></svg>`;
 
-// The talk button: the coin as a speech bubble. The terracotta outline runs round the coin and its
-// tail as one shape, so the tail shows on dark backgrounds too.
-const TAIL = 'M 31 84 L 7 114 L 54 101 Z';
+// The talk button: the coin as a speech bubble with a small tail. A terracotta outline runs round
+// the coin and tail as one shape so the tail shows on dark backgrounds; the inner ring is the coin's rim.
+const TAIL = 'M30 82 L12 112 L56 98 Z';
 const talkCoin = () => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-<defs><clipPath id="face"><circle cx="64" cy="54" r="43"/></clipPath></defs>
-<g stroke="${FIGURE}" stroke-width="8" stroke-linejoin="round"><circle cx="64" cy="54" r="49"/><path d="${TAIL}"/></g>
-<g fill="${GLAZE}" stroke="${GLAZE}" stroke-width="0.5"><circle cx="64" cy="54" r="49"/><path d="${TAIL}" stroke-linejoin="round"/></g>
-<g clip-path="url(#face)"><g transform="translate(62 64) scale(0.26) translate(-262 -300)"><path d="${BUST}" fill="${FIGURE}"/></g></g></svg>`;
+<defs><clipPath id="face"><circle cx="62" cy="56" r="46"/></clipPath></defs>
+<g stroke="${FIGURE}" stroke-width="5" stroke-linejoin="round"><circle cx="62" cy="56" r="52"/><path d="${TAIL}"/></g>
+<g fill="${GLAZE}"><circle cx="62" cy="56" r="52"/><path d="${TAIL}"/></g>
+<g clip-path="url(#face)"><g transform="translate(60 66) scale(0.27) translate(-262 -300)"><path d="${BUST}" fill="${FIGURE}"/></g></g>
+<circle cx="62" cy="56" r="46" fill="none" stroke="${FIGURE}" stroke-width="3.5"/></svg>`;
 
 const write = (rel, s) => fs.writeFileSync(path.join(root, rel), s + '\n');
 write('public/icon.svg', icon({ rx: 112 }));

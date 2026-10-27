@@ -24,6 +24,8 @@ export class ChatSheet {
     this.input = h('textarea', {
       rows: 1, placeholder: 'Ask about this card…', 'aria-label': 'Message',
       oninput: () => this.autosize(),
+      // Can't talk out loud? Tap the box while it's listening and type instead
+      onfocus: () => this.switchToTyping(),
       onkeydown: (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
@@ -230,6 +232,7 @@ export class ChatSheet {
         this.micBtn.className = `round ${this.listening ? 'listening' : 'primary'}`;
         this.micBtn.innerHTML = this.listening ? icons.send : icons.mic;
         this.micBtn.setAttribute('aria-label', this.listening ? 'Send now' : 'Speak');
+        this.input.placeholder = this.listening ? 'Listening… or tap here to type' : 'Ask about this card…';
         this.hint.hidden = state === 'idle';
         this.hint.textContent =
           state === 'transcribing'
@@ -249,6 +252,21 @@ export class ChatSheet {
       },
     });
     this.dictation.start();
+  }
+
+  /** Stops listening so you can type; anything already heard moves into the box to finish or fix. */
+  switchToTyping() {
+    if (!this.listening) return;
+    const heard = [...this.messages.querySelectorAll('.msg.pending')]
+      .map((b) => b.textContent.trim())
+      .find((t) => t && !/^(Listening…|Transcribing…)/.test(t));
+    this.cancelListening();
+    this.input.placeholder = 'Ask about this card…';
+    if (heard) {
+      this.input.value = [this.input.value.trim(), heard].filter(Boolean).join(' ');
+      this.autosize();
+      this.input.setSelectionRange(this.input.value.length, this.input.value.length);
+    }
   }
 
   cancelListening() {
