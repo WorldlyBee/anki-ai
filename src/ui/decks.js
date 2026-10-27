@@ -90,7 +90,12 @@ export async function renderDecks(app) {
         },
       });
       list.append(h('div', { class: 'deck-row' },
-        h('div', { class: 'deck-name', style: { paddingLeft: `${(parts.length - 1) * 18}px` }, onclick: () => navigate(`#/study/${d.id}`) },
+        h('div', {
+          class: 'deck-name', role: 'button', tabindex: '0', 'aria-label': `Study ${d.name.split('::').join(' › ')}`,
+          style: { paddingLeft: `${(parts.length - 1) * 18}px` },
+          onclick: () => navigate(`#/study/${d.id}`),
+          onkeydown: (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), navigate(`#/study/${d.id}`)),
+        },
           toggle, h('span', { class: 'label' }, parts.at(-1)),
           d.reminder && h('span', { class: 'bell', title: describeReminder(d.reminder), role: 'img', 'aria-label': `Reminder: ${describeReminder(d.reminder)}` }, icon('bell')),
         ),

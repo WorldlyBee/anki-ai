@@ -339,3 +339,12 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .ask-fab.dragging { transform: scale(1.08); box-shadow: 0 10px 30px rgba(20, 30, 54, 0.35); cursor: grabbing; }
 .ask-fab.user-hidden { display: none; }
 .topbar .icon-btn:disabled { opacity: 0.35; }
+
+/* App controls aren't readable text: stops Chrome's "Touch to Search" (and accidental text
+   selection) when tapping deck names, counts, buttons and menus. Cards and chat stay selectable. */
+.topbar, .deck-header, .deck-row, .today, .answer-bar, .fab, .ask-fab, .popup-menu, .dialog-buttons,
+.sheet-head, .msg-tools, .suggestions, .chip, .btn, button, summary, .counts, .streak {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
