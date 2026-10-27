@@ -333,3 +333,9 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .from-anki { margin-top: 14px; }
 .from-anki summary { cursor: pointer; color: var(--link); font-weight: 600; font-size: 15px; padding: 6px 0; }
 .from-anki p { margin-top: 6px; }
+
+/* mic button: draggable, hideable */
+.ask-fab { touch-action: none; transition: box-shadow 0.15s, transform 0.15s; }
+.ask-fab.dragging { transform: scale(1.08); box-shadow: 0 10px 30px rgba(20, 30, 54, 0.35); cursor: grabbing; }
+.ask-fab.user-hidden { display: none; }
+.topbar .icon-btn:disabled { opacity: 0.35; }

@@ -1,7 +1,7 @@
 import { buildCardContext, streamReply } from '../ai.js';
 import { createDictation, speak, stopSpeaking } from '../voice.js';
 import { getSettings } from '../store.js';
-import { h, icon, icons } from './dom.js';
+import { h, icon, icons, toast } from './dom.js';
 import { renderMarkdown } from './markdown.js';
 
 /**
@@ -46,6 +46,8 @@ export class ChatSheet {
       h('div', { class: 'composer' }, this.input, this.micBtn, this.sendBtn),
     );
     parent.append(this.el);
+    this.onPop = () => this.isOpen && this.close({ fromBack: true });
+    window.addEventListener('popstate', this.onPop);
   }
 
   get isOpen() {
@@ -53,6 +55,11 @@ export class ChatSheet {
   }
   get hasConversation() {
     return this.history.length > 0;
+  }
+
+  destroy() {
+    window.removeEventListener('popstate', this.onPop);
+    this.close({ fromBack: true });
   }
 
   /** Called whenever a new card is shown. */
@@ -70,15 +77,34 @@ export class ChatSheet {
   }
 
   open({ listen = false } = {}) {
+    if (!navigator.onLine) {
+      toast("You're offline. Aristotle needs an internet connection to answer.", 3500);
+      return;
+    }
+    if (!this.isOpen) {
+      // An extra history entry so the phone's back gesture closes the sheet instead of leaving the deck
+      history.pushState({ ...(history.state || {}), aristotleSheet: true }, '');
+      this.pushedHistory = true;
+    }
     this.el.classList.add('open');
     if (listen) this.startListening();
     else if (!this.history.length) this.input.focus();
   }
 
-  close() {
+  close({ fromBack = false } = {}) {
+    const wasOpen = this.isOpen;
     this.cancelListening();
     this.el.classList.remove('open', 'tall');
     this.onChange();
+    if (wasOpen && this.pushedHistory && !fromBack) history.back();
+    this.pushedHistory = false;
+  }
+
+  /** Errors before any conversation: say it briefly and get out of the way. */
+  fail(msg) {
+    if (this.history.length) return this.showError(msg);
+    toast(msg, 4000);
+    this.close();
   }
 
   autosize() {
@@ -144,7 +170,7 @@ export class ChatSheet {
       onError: (msg) => {
         bubble?.remove();
         bubble = null;
-        this.showError(msg);
+        this.fail(msg);
       },
     });
     this.dictation.start();
@@ -218,7 +244,8 @@ export class ChatSheet {
       } else {
         bubble.remove();
         this.history.pop(); // let them retry the same question
-        this.showError(friendlyError(err));
+        this.messages.lastElementChild?.classList.contains('user') && !this.history.length && this.messages.lastElementChild.remove();
+        this.fail(friendlyError(err));
       }
     } finally {
       this.sendBtn.innerHTML = icons.send;
@@ -251,6 +278,8 @@ function friendlyError(err) {
   if (status === 404) return "That model name wasn't found. Pick another one in Settings.";
   if (status === 429) return "Rate limited or out of credit. Wait a moment, or check your API account's billing.";
   if (status === 529 || status === 503) return 'The AI service is overloaded right now. Try again in a moment.';
+  if (status >= 500) return 'The AI service had a hiccup. Try again in a moment.';
+  if (status === 400) return "The AI couldn't handle that request. Try rephrasing, or pick another model in Settings.";
   if (!navigator.onLine) return "You're offline. The AI needs an internet connection.";
   return err?.message || String(err);
 }

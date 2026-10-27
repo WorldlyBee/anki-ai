@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify';
 import katexCss from 'katex/dist/katex.min.css?inline';
 import { db } from '../db.js';
-import { getSettings, todayLog, saveAnswer, undoAnswer, mediaUrl, getStreak } from '../store.js';
+import { getSettings, saveSettings, todayLog, saveAnswer, undoAnswer, mediaUrl, getStreak } from '../store.js';
 import { buildQueues, pickNext, previewCard, formatInterval, makeFsrs, subtreeIds, dayStart, State, Rating } from '../scheduler.js';
 import { renderCard } from '../render.js';
 import { h, icon, toast, menu } from './dom.js';
@@ -69,12 +69,18 @@ export async function renderStudy(app, deckId) {
   // ---- layout ----
   const countsEl = h('span', { class: 'counts' });
   const menuBtn = h('button', { class: 'icon-btn', 'aria-label': 'More', html: icon('more').outerHTML });
+  const undoBtn = h('button', { class: 'icon-btn', 'aria-label': 'Undo last answer', title: 'Undo last answer', disabled: true, html: icon('undo').outerHTML, onclick: () => undo() });
+  // Shown in the top bar only when the floating mic is hidden, so asking is always one tap away
+  const topMicBtn = h('button', { class: 'icon-btn', 'aria-label': 'Ask Aristotle', hidden: true, html: icon('mic').outerHTML, onclick: () => current && chat.open({ listen: true }) });
   const top = h('header', { class: 'topbar' },
     h('button', { class: 'icon-btn', 'aria-label': 'Back', html: icon('back').outerHTML, onclick: () => navigate('#/') }),
     h('h1', {}, deck.name.split('::').at(-1)),
     countsEl,
+    topMicBtn,
+    undoBtn,
     menuBtn,
   );
+  const syncUndo = () => (undoBtn.disabled = !undoStack.length);
   const host = h('div', { class: 'card-host' });
   const shadow = host.attachShadow({ mode: 'open' });
   const cardScroll = h('div', { class: 'card-scroll' }, host);
@@ -91,13 +97,79 @@ export async function renderStudy(app, deckId) {
       if (chat.hasConversation && !chat.isOpen) askBtn.append(h('span', { class: 'badge' }));
     },
   );
-  // One tap: open the chat with the card attached and start listening straight away
-  askBtn.onclick = () => current && chat.open({ listen: true });
+  // One tap: open the chat with the card attached and start listening straight away.
+  // Drag to move it out of the way; the spot is remembered on this device.
+  let dragged = false;
+  askBtn.onclick = () => {
+    if (dragged) return (dragged = false);
+    if (current) chat.open({ listen: true });
+  };
+  setupDrag(askBtn, study, bar);
+  let micHidden = !!settings.hideAskButton;
+  const syncMic = () => {
+    askBtn.classList.toggle('user-hidden', micHidden);
+    topMicBtn.hidden = !micHidden || !current;
+  };
+  syncMic();
+  // Tapping the card closes the question sheet
+  cardScroll.addEventListener('click', () => chat.isOpen && chat.close());
+
+  function setupDrag(btn, area, avoid) {
+    const KEY = 'aristotle-ask-pos';
+    const place = (pos) => {
+      if (!pos) return;
+      btn.style.right = `${pos.right}px`;
+      btn.style.bottom = `${pos.bottom}px`;
+    };
+    try {
+      place(JSON.parse(localStorage.getItem(KEY) || 'null'));
+    } catch {}
+    let start = null;
+    btn.addEventListener('pointerdown', (e) => {
+      start = { x: e.clientX, y: e.clientY, rect: btn.getBoundingClientRect(), area: area.getBoundingClientRect(), moved: false };
+      btn.setPointerCapture(e.pointerId);
+    });
+    btn.addEventListener('pointermove', (e) => {
+      if (!start) return;
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      if (!start.moved && Math.hypot(dx, dy) < 10) return;
+      start.moved = true;
+      btn.classList.add('dragging');
+      const { rect, area: a } = start;
+      const minBottom = avoid.offsetHeight + 12;
+      const right = Math.min(Math.max(8, a.right - rect.right - dx), a.width - rect.width - 8);
+      const bottom = Math.min(Math.max(minBottom, a.bottom - rect.bottom - dy), a.height - rect.height - 8);
+      place({ right, bottom });
+    });
+    const end = () => {
+      if (!start) return;
+      if (start.moved) {
+        dragged = true; // swallow the click that follows a drag
+        btn.classList.remove('dragging');
+        try {
+          localStorage.setItem(KEY, JSON.stringify({ right: parseFloat(btn.style.right), bottom: parseFloat(btn.style.bottom) }));
+        } catch {}
+      }
+      start = null;
+    };
+    btn.addEventListener('pointerup', end);
+    btn.addEventListener('pointercancel', end);
+  }
 
   menuBtn.onclick = (e) =>
     menu(e.currentTarget, [
-      { label: 'Undo', disabled: !undoStack.length, action: undo },
-      { label: 'Ask the AI (typing)', disabled: !current, action: () => chat.open() },
+      { label: 'Undo last answer', disabled: !undoStack.length, action: undo },
+      { label: 'Ask Aristotle (typing)', disabled: !current, action: () => chat.open() },
+      {
+        label: micHidden ? 'Show mic button' : 'Hide mic button',
+        action: async () => {
+          micHidden = !micHidden;
+          await saveSettings({ hideAskButton: micHidden });
+          syncMic();
+          toast(micHidden ? 'Mic hidden. It\'s in the top bar now.' : 'Mic button is back. Drag it anywhere.');
+        },
+      },
       { label: 'Bury card (until tomorrow)', disabled: !current, action: () => setCardFlag('bury') },
       { label: 'Suspend card', disabled: !current, action: () => setCardFlag('suspend') },
     ]);
@@ -159,6 +231,7 @@ export async function renderStudy(app, deckId) {
       chat.setCard(null);
       chat.close();
       askBtn.hidden = true;
+      topMicBtn.hidden = true;
       bar.replaceChildren(h('button', { class: 'show', onclick: () => navigate('#/') }, 'Back to decks'));
       const msg = pick.waitUntil
         ? `More learning cards are due in ${formatInterval(pick.waitUntil - now)}. Stay here and they'll appear, or come back later.`
@@ -200,6 +273,7 @@ export async function renderStudy(app, deckId) {
       return showNext();
     }
     current = { card, note, notetype };
+    syncMic();
     revealed = false;
     typed = '';
     preview = null;
@@ -237,6 +311,7 @@ export async function renderStudy(app, deckId) {
     sessionCards++;
     undoStack.push({ prev, logId });
     if (undoStack.length > 20) undoStack.shift();
+    syncUndo();
     cards = cards.map((c) => (c.id === prev.id ? updated : c));
     log.push({ ...entry, id: logId });
     lastId = prev.id;
@@ -256,6 +331,7 @@ export async function renderStudy(app, deckId) {
 
   async function undo() {
     const last = undoStack.pop();
+    syncUndo();
     if (!last) return;
     sessionCards = Math.max(0, sessionCards - 1);
     await undoAnswer(last.prev, last.logId);
@@ -300,6 +376,7 @@ export async function renderStudy(app, deckId) {
     document.removeEventListener('keydown', onKey);
     clearTimeout(waitTimer);
     chat.setCard(null);
+    chat.destroy();
   });
 
   await showNext();
