@@ -95,7 +95,7 @@ export async function importFile(file, onProgress = () => {}) {
       }
     }
     if (batch.length) await db.media.bulkPut(batch);
-    return { notes: data.notes.length, cards: data.cards.length, media: data.media.length, decks: data.decks.length };
+    return { notes: data.notes.length, cards: data.cards.length, media: data.media.length, decks: data.decks.length, deckNames: data.decks.map((d) => d.name) };
   } finally {
     await data.close();
   }

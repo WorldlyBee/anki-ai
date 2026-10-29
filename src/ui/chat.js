@@ -3,6 +3,7 @@ import { createDictation, speak, stopSpeaking } from '../voice.js';
 import { getSettings } from '../store.js';
 import { h, icon, icons, toast } from './dom.js';
 import { renderMarkdown } from './markdown.js';
+import { deckSummaryFor } from '../deckSummary.js';
 
 /**
  * The "ask about this card" sheet. One conversation per card; it resets when the card changes.
@@ -23,9 +24,13 @@ export class ChatSheet {
     this.messages = h('div', { class: 'messages', 'aria-live': 'polite' });
     this.input = h('textarea', {
       rows: 1, placeholder: 'Ask about this card…', 'aria-label': 'Message',
-      oninput: () => this.autosize(),
+      oninput: () => {
+        this.autosize();
+        this.syncSend();
+      },
       // Can't talk out loud? Tap the box while it's listening and type instead
       onfocus: () => this.switchToTyping(),
+      onpointerdown: () => this.switchToTyping(),
       onkeydown: (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
@@ -34,7 +39,7 @@ export class ChatSheet {
       },
     });
     this.micBtn = h('button', { class: 'round primary', 'aria-label': 'Speak', html: icons.mic, onclick: () => this.toggleListening() });
-    this.sendBtn = h('button', { class: 'round', 'aria-label': 'Send', html: icons.send, onclick: () => this.sendTyped() });
+    this.sendBtn = h('button', { class: 'round', 'aria-label': 'Send', html: icons.send, onclick: () => this.onSendButton() });
     this.hint = h('div', { class: 'listen-hint', hidden: true });
     this.expandBtn = h('button', { class: 'icon-btn', 'aria-label': 'Full screen', html: icons.chevron, style: { transform: 'rotate(-90deg)' }, onclick: () => this.setFull(true) });
     this.minBtn = h('button', { class: 'icon-btn', 'aria-label': 'Minimise', html: icons.down, onclick: () => this.close() });
@@ -190,11 +195,27 @@ export class ChatSheet {
   }
 
   sendTyped() {
+    this.switchToTyping(); // typed while the mic was on: stop it and keep what it heard
     const text = this.input.value.trim();
     if (!text) return;
     this.input.value = '';
     this.autosize();
-    this.ask(text);
+    this.ask(text); // also interrupts an answer that's still coming in
+  }
+
+  /** Send when there's something typed; otherwise, while an answer streams in, stop it. */
+  onSendButton() {
+    if (this.input.value.trim()) this.sendTyped();
+    else if (this.abort && !this.abort.signal.aborted) this.abort.abort();
+  }
+
+  /** The send button lights up once there's text, and turns into stop while an answer streams with nothing typed. */
+  syncSend() {
+    const hasText = !!this.input.value.trim();
+    const stop = !hasText && this.streaming;
+    this.sendBtn.className = `round${hasText ? ' primary' : ''}`;
+    this.sendBtn.innerHTML = stop ? icons.stop : icons.send;
+    this.sendBtn.setAttribute('aria-label', stop ? 'Stop' : 'Send');
   }
 
   // ---------- voice ----------
@@ -228,6 +249,7 @@ export class ChatSheet {
         this.ask(text);
       },
       onState: (state) => {
+        this.voiceState = state;
         this.listening = state === 'listening';
         this.micBtn.className = `round ${this.listening ? 'listening' : 'primary'}`;
         this.micBtn.innerHTML = this.listening ? icons.send : icons.mic;
@@ -256,14 +278,14 @@ export class ChatSheet {
 
   /** Stops listening so you can type; anything already heard moves into the box to finish or fix. */
   switchToTyping() {
-    if (!this.listening) return;
+    if (!this.voiceState || this.voiceState === 'idle') return;
     const heard = [...this.messages.querySelectorAll('.msg.pending')]
       .map((b) => b.textContent.trim())
       .find((t) => t && !/^(Listening…|Transcribing…)/.test(t));
     this.cancelListening();
     this.input.placeholder = 'Ask about this card…';
     if (heard) {
-      this.input.value = [this.input.value.trim(), heard].filter(Boolean).join(' ');
+      this.input.value = [this.input.value.trim(), heard].filter(Boolean).join(' ') + ' '; // ready to keep typing
       this.autosize();
       this.input.setSelectionRange(this.input.value.length, this.input.value.length);
     }
@@ -273,45 +295,67 @@ export class ChatSheet {
     if (this.dictation) this.dictation.cancel();
     this.messages.querySelectorAll('.msg.pending').forEach((b) => b.remove());
     this.listening = false;
+    this.voiceState = 'idle';
   }
 
   // ---------- conversation ----------
 
   async ask(text) {
+    // A new question interrupts an answer that's still streaming; that answer keeps what it had
+    this.abort?.abort();
+    const controller = (this.abort = new AbortController());
     const settings = await getSettings();
     const info = this.getCard();
     if (!info) return;
     if (!this.context) {
-      this.context = await buildCardContext({ ...info, settings });
+      try {
+        this.context = await buildCardContext({ ...info, deckSummary: await deckSummaryFor(info.deckName), settings });
+      } catch (err) {
+        return this.fail(friendlyError(err));
+      }
       this.toldRevealed = info.revealed;
     } else if (info.revealed && !this.toldRevealed) {
       text = "(I've flipped the card now.) " + text;
       this.toldRevealed = true;
     }
-    this.history.push({ role: 'user', text });
-    this.messages.append(h('div', { class: 'msg user' }, text.replace(/^\(I've flipped the card now\.\) /, '')));
+    if (controller.signal.aborted) return; // an even newer question arrived meanwhile
+    const userEntry = { role: 'user', text };
+    this.history.push(userEntry);
+    const userEl = h('div', { class: 'msg user' }, text.replace(/^\(I've flipped the card now\.\) /, ''));
+    this.messages.append(userEl);
     this.onChange();
 
     const bubble = h('div', { class: 'msg ai typing' });
     this.messages.append(bubble);
-    this.scrollDown();
+    // Keep the question at the top while the answer comes in, so you read from its beginning.
+    // Scrolling yourself takes over.
+    let pinned = true;
+    const unpin = () => (pinned = false);
+    this.messages.addEventListener('touchstart', unpin, { passive: true });
+    this.messages.addEventListener('wheel', unpin, { passive: true });
+    const follow = () => pinned && (this.messages.scrollTop = userEl.offsetTop - 8);
+    follow();
 
-    this.abort?.abort();
-    const controller = (this.abort = new AbortController());
+    // Answers go into history right after their own question, even if a newer one was asked since
+    // (and not at all if the card changed and the conversation was reset)
+    const answer = (reply) => {
+      const i = this.history.indexOf(userEntry);
+      if (i >= 0) this.history.splice(i + 1, 0, { role: 'assistant', text: reply });
+    };
     let frame = 0;
     let latest = '';
     const paint = () => {
       frame = 0;
       bubble.innerHTML = renderMarkdown(latest);
-      this.scrollDown();
+      follow();
     };
-    this.sendBtn.innerHTML = icons.stop;
-    this.sendBtn.onclick = () => controller.abort();
+    this.streaming = true;
+    this.syncSend();
     try {
       const reply = await streamReply({
         settings,
         context: this.context,
-        history: this.history,
+        history: this.history.slice(0, this.history.indexOf(userEntry) + 1),
         signal: controller.signal,
         onText: (t) => {
           latest = t;
@@ -322,27 +366,34 @@ export class ChatSheet {
       cancelAnimationFrame(frame); // a queued repaint would wipe the buttons added below
       paint();
       bubble.classList.remove('typing');
-      this.history.push({ role: 'assistant', text: reply });
+      answer(reply);
       bubble.append(this.tools(reply, settings));
       if (settings.autoSpeak) speak(reply, settings.voiceLang);
     } catch (err) {
       cancelAnimationFrame(frame);
       bubble.classList.remove('typing');
       if (controller.signal.aborted) {
-        if (latest) this.history.push({ role: 'assistant', text: latest });
-        else {
+        if (latest) {
+          paint();
+          answer(latest);
+        } else {
           bubble.remove();
-          this.history.pop();
+          answer('(I was interrupted before answering.)');
         }
       } else {
         bubble.remove();
-        this.history.pop(); // let them retry the same question
-        this.messages.lastElementChild?.classList.contains('user') && !this.history.length && this.messages.lastElementChild.remove();
+        const i = this.history.indexOf(userEntry);
+        if (i >= 0) this.history.splice(i, 1); // let them retry the same question
+        if (!this.history.length) userEl.remove();
         this.fail(friendlyError(err));
       }
     } finally {
-      this.sendBtn.innerHTML = icons.send;
-      this.sendBtn.onclick = () => this.sendTyped();
+      this.messages.removeEventListener('touchstart', unpin);
+      this.messages.removeEventListener('wheel', unpin);
+      if (this.abort === controller) {
+        this.streaming = false;
+        this.syncSend();
+      }
       this.onChange();
     }
   }

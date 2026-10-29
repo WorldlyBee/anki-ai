@@ -63,10 +63,11 @@ function reviewHistory(card) {
 }
 
 /** Builds the opening context for a card: its text plus up to 4 images. */
-export async function buildCardContext({ notetype, note, card, deckName, revealed, settings }) {
+export async function buildCardContext({ notetype, note, card, deckName, deckSummary, revealed, settings }) {
   const { front, back } = cardAsText({ notetype, note, card, deckName });
   const text =
     `Here's the flashcard I'm studying (deck: ${deckName || 'unknown'}).\n\n` +
+    (deckSummary ? `About this deck: ${deckSummary}\n\n` : '') +
     `FRONT:\n${front || '(empty)'}\n\nBACK:\n${back || '(empty)'}\n\n` +
     `Review history: ${reviewHistory(card)}\n` +
     (revealed ? "(I've already seen the back of the card.)" : "(I haven't flipped the card yet.)");
@@ -85,13 +86,21 @@ export async function buildCardContext({ notetype, note, card, deckName, reveale
  * Streams a reply. `history` is [{role:'user'|'assistant', text}] where the first user turn
  * carries the card context. Calls onText(fullTextSoFar) as tokens arrive.
  */
-export async function streamReply({ settings, context, history, onText, signal }) {
-  if (settings.provider === 'openrouter') return streamOpenRouter({ settings, system: tutorPrompt(settings), context, history, onText, signal });
-  if (settings.provider === 'openai') return streamOpenAI({ settings, context, history, onText, signal });
-  return streamAnthropic({ settings, context, history, onText, signal });
+export async function streamReply({ settings, context, history, onText, signal, system = tutorPrompt(settings) }) {
+  if (settings.provider === 'openrouter') return streamOpenRouter({ settings, system, context, history, onText, signal });
+  if (settings.provider === 'openai') return streamOpenAI({ settings, system, context, history, onText, signal });
+  return streamAnthropic({ settings, system, context, history, onText, signal });
 }
 
-async function streamAnthropic({ settings, context, history, onText, signal }) {
+/** Is an AI provider set up, so background jobs like deck summaries can run? */
+export const aiReady = (settings) => !!{ openrouter: settings.openrouterKey, anthropic: settings.anthropicKey, openai: settings.openaiKey }[settings.provider];
+
+/** A one-off request outside the tutor chat (no card, no streaming UI). */
+export function completeOnce({ settings, system, prompt, signal }) {
+  return streamReply({ settings, system, context: { text: '', images: [] }, history: [{ role: 'user', text: prompt }], onText: () => {}, signal });
+}
+
+async function streamAnthropic({ settings, system, context, history, onText, signal }) {
   if (!settings.anthropicKey) throw new Error('Add your Anthropic API key in Settings first.');
   const client = new Anthropic({ apiKey: settings.anthropicKey, dangerouslyAllowBrowser: true });
   const messages = history.map((m, i) => ({
@@ -108,7 +117,7 @@ async function streamAnthropic({ settings, context, history, onText, signal }) {
   const params = {
     model,
     max_tokens: 16000,
-    system: tutorPrompt(settings),
+    system,
     messages,
     thinking: { type: 'adaptive' },
     output_config: { effort: settings.effort || 'low' },
@@ -131,11 +140,11 @@ async function streamAnthropic({ settings, context, history, onText, signal }) {
   return text;
 }
 
-async function streamOpenAI({ settings, context, history, onText, signal }) {
+async function streamOpenAI({ settings, system, context, history, onText, signal }) {
   if (!settings.openaiKey) throw new Error('Add your OpenAI API key in Settings first.');
   const client = new OpenAI({ apiKey: settings.openaiKey, dangerouslyAllowBrowser: true });
   const messages = [
-    { role: 'system', content: tutorPrompt(settings) },
+    { role: 'system', content: system },
     ...history.map((m, i) => ({
       role: m.role,
       content:

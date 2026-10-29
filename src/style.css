@@ -220,7 +220,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .sheet-head { display: flex; align-items: center; padding: 4px 4px 0 14px; flex-shrink: 0; }
 .sheet-head .grip { position: absolute; left: 50%; top: 6px; width: 36px; height: 4px; border-radius: 2px; background: var(--border); transform: translateX(-50%); }
 .sheet-head h3 { flex: 1; margin: 10px 0 6px; font-size: 15px; font-weight: 600; color: var(--muted); }
-.messages { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 10px; }
+.messages { position: relative; flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 10px; }
 .msg { max-width: 88%; padding: 10px 13px; border-radius: 16px; overflow-wrap: anywhere; }
 .msg.user { align-self: flex-end; background: var(--bubble-user); color: var(--bubble-user-text); border-bottom-right-radius: 4px; }
 .msg.user.pending { opacity: 0.7; font-style: italic; }

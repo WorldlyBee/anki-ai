@@ -11,6 +11,7 @@ import { navigate, onLeave } from '../router.js';
 import { isDarkTheme } from '../theme.js';
 import { quoteOfTheDay } from '../quotes.js';
 import { setSoundsEnabled, playPageTurn, playRated, playComplete } from '../sounds.js';
+import { summarizeMissing } from '../deckSummary.js';
 import coinUrl from '../assets/coin.svg';
 import coinTalkUrl from '../assets/coin-talk.svg';
 
@@ -45,6 +46,7 @@ export async function renderStudy(app, deckId) {
   const decks = await db.decks.toArray();
   const deck = decks.find((d) => d.id === deckId);
   if (!deck) return navigate('#/');
+  summarizeMissing([deck.name]); // decks imported before the AI was set up get their summary now
   const ids = subtreeIds(decks, deckId);
   let cards = await db.cards.where('did').anyOf(ids).toArray();
   let log = await todayLog(settings);

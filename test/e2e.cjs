@@ -85,7 +85,8 @@ const sse = (text) =>
   await renameDeck('Medicine', 'Med School');
   const renamed = await page.$$eval('.deck-row', (r) => r.map((x) => x.innerText.replace(/\s+/g, ' ')));
   console.log('after renaming Medicine → Med School:', renamed);
-  if (renamed[0] !== 'Med School 5 1 0' || renamed[1] !== 'Cardiology 1 0 0') throw new Error('rename broke the deck tree');
+  // Same counts as before (they depend on today's date, so compare rather than hard-code)
+  if (renamed[0] !== rows[0].replace('Medicine', 'Med School') || renamed[1] !== rows[1]) throw new Error('rename broke the deck tree');
   await renameDeck('Med School', 'Medicine');
 
   // Study

@@ -8,6 +8,7 @@ import { WEEKDAYS, describe as describeReminder, icsFile, googleCalendarLink } f
 import { getSyncStatus, onSyncStatus, getSyncConfig, backupToRepo } from '../sync/sync.js';
 import { connectOpenRouter } from '../openrouter.js';
 import { syncStatusText } from './syncSettings.js';
+import { summarizeMissing, summarizeDeck } from '../deckSummary.js';
 
 export async function renderDecks(app) {
   const settings = await getSettings();
@@ -157,6 +158,7 @@ async function runImport(app, file) {
   try {
     const res = await importFile(file, (msg) => (status.textContent = msg));
     toast(`Imported ${res.cards} cards from ${res.decks} deck${res.decks === 1 ? '' : 's'}`, 3500);
+    summarizeMissing(res.deckNames); // Aristotle reads the new deck in the background
   } catch (err) {
     console.error(err);
     await dialog({ title: "Couldn't import that file", body: h('p', {}, err.message || String(err)) });
@@ -190,15 +192,35 @@ async function runBackup() {
 }
 
 async function deckOptions(app, deck, settings) {
+  deck = (await db.decks.get(deck.id)) || deck; // fresh: a summary may have arrived since the list was drawn
   const leaf = deck.name.split('::').at(-1);
   const parent = deck.name.split('::').slice(0, -1).join(' › ');
   const nameIn = h('input', { type: 'text', value: leaf, autocomplete: 'off' });
   const newIn = h('input', { type: 'number', min: 0, value: deck.newPerDay ?? settings.newPerDay });
   const revIn = h('input', { type: 'number', min: 0, value: deck.revPerDay ?? settings.revPerDay });
+  // Top-level decks carry a short description that Aristotle reads with every question
+  const isRoot = !deck.name.includes('::');
+  const aboutIn = h('textarea', { rows: 4, placeholder: 'What this deck covers. Aristotle reads this with every question.' });
+  aboutIn.value = deck.summary || '';
+  const writeBtn = h('button', {
+    type: 'button', class: 'btn', onclick: async () => {
+      writeBtn.disabled = true;
+      writeBtn.textContent = 'Reading the deck…';
+      try {
+        aboutIn.value = (await summarizeDeck(deck.name)) || aboutIn.value;
+        if (!aboutIn.value) toast('Connect an AI provider in Settings first.');
+      } catch (err) {
+        toast(`Couldn't write a summary: ${err.message || err}`, 4000);
+      }
+      writeBtn.disabled = false;
+      writeBtn.textContent = aboutIn.value ? 'Rewrite it' : 'Write it for me';
+    },
+  }, deck.summary ? 'Rewrite it' : 'Write it for me');
   const choice = await dialog({
     title: 'Deck options',
     body: (close) => h('div', {},
       h('label', { class: 'field' }, h('span', {}, 'Name'), nameIn, parent && h('small', {}, `Inside ${parent}`)),
+      isRoot && h('label', { class: 'field' }, h('span', {}, 'About this deck'), aboutIn, h('div', { class: 'row-btns' }, writeBtn)),
       h('label', { class: 'field' }, h('span', {}, 'New cards per day'), newIn),
       h('label', { class: 'field' }, h('span', {}, 'Maximum reviews per day'), revIn),
       h('div', { class: 'field' }, h('span', {}, 'Reminder'),
@@ -219,7 +241,7 @@ async function deckOptions(app, deck, settings) {
       await dialog({ title: "Couldn't rename the deck", body: h('p', {}, err.message) });
       return deckOptions(app, { ...deck }, settings);
     }
-    await db.decks.update(deck.id, { newPerDay: Number(newIn.value), revPerDay: Number(revIn.value) });
+    await db.decks.update(deck.id, { newPerDay: Number(newIn.value), revPerDay: Number(revIn.value), ...(isRoot && { summary: aboutIn.value.trim() }) });
     if (choice === 'reminder') return reminderDialog(app, await db.decks.get(deck.id));
     renderDecks(app);
   } else if (choice === 'delete') {
